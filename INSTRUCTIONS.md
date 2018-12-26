@@ -1,0 +1,164 @@
+
+## Dependencies:
+
++ TensorFlow ≥ 1.6 with GPU support
++ OpenCV ≥ 3
++ Tensorpack ≥ 0.9.1
++ horovod ≥ 0.15 with NCCL support
+  + horovod has many [installation options](https://github.com/uber/horovod/blob/master/docs/gpus.md) to optimize its multi-machine/multi-GPU performance.
+    You might want to follow them.
++ ImageNet data in its standard directory structure.
++ TensorFlow [zmq_ops](https://github.com/tensorpack/zmq_ops) (needed only for training)
+
+
+## Model Zoo:
+<table>
+<thead>
+<tr>
+<th align="left" rowspan=2>Model (expand for flags)</th>
+<th align="center">error rate (%)</th>
+<th align="center" colspan=3>error rate / attack success rate (%)</th>
+</tr>
+<tr>
+<th align="center">clean images</th>
+<th align="center">10-step PGD</th>
+<th align="center">100-step PGD</th>
+<th align="center">1000-step PGD</th>
+</tr>
+</thead>
+
+
+<tbody>
+<tr>
+<td align="left"><details><summary>ResNet152 Baseline <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0/R152.npz"> :arrow_down: </a> </summary> <code>--arch ResNet -d 152</code></details></td>
+<td align="center">37.7</td>
+<td align="center">47.5/5.5</td>
+<td align="center">58.3/31.0</td>
+<td align="center">61.0/36.1</td>
+</tr>
+
+<tr>
+<td align="left"><details><summary>ResNet152 Denoise  <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.1/R152-Denoise.npz"> :arrow_down: </a> </summary> <code>--arch ResNetDenoise -d 152</code></details></td>
+<td align="center">34.7</td>
+<td align="center">44.3/4.9</td>
+<td align="center">54.5/26.6</td>
+<td align="center">57.2/32.7</td>
+</tr>
+
+<tr>
+<td align="left"><details><summary>ResNeXt101 DenoiseAll  <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.2/X101-DenoiseAll.npz"> :arrow_down: </a> </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> </details></td>
+<td align="center">31.6</td>
+<td align="center">44.0/4.9</td>
+<td align="center">55.6/31.5</td>
+<td align="center">59.6/38.1</td>
+</tr>
+</tbody>
+</table>
+
+
+
+Note:
+
+1. As mentioned in the paper, the threat model is:
+
+   1. targeted PGD attack with one random uniform target label associated with each image
+   2. maximum perturbation per pixel is 16.
+
+   We do not consider untargeted attack, nor do we let the attacker control the target label,
+   because we think such tasks are not realistic on the ImageNet-1k categories.
+
+2. For each (attacker, model) pair, we provide both the __error rate__ of our model,
+   and the __attack success rate__ of the attacker, on ImageNet validation set.
+   A targeted attack is considered successful if the image is classified to the target label.
+
+   __For defenders__, if you develop a new robust model, please compare its error rate with our models.
+   Attack success rate is not a reasonable metric, because then the model can cheat by making random predictions.
+
+   __For attackers__, if you develop a new targeted attack method against our models,
+   please compare its attack success rate with PGD.
+   Error rate is not a reasonable metric, because then the method can cheat by becoming
+   close to untargeted attacks.
+
+3. `ResNeXt101 DenoiseAll` is the submission that won the champion of
+   black-box defense track in [Competition on Adversarial Attacks and Defenses 2018](http://hof.geekpwn.org/caad/en/index.html).
+	 This model was trained with slightly different training settings
+	 therefore its results are not directly comparable with other models.
+
+
+## Evaluate White-Box Robustness:
+
+To evaluate on one GPU, run this command:
+```
+python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet \
+  --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
+```
+
+To reproduce our evaluation results,
+take "architecture flags" from the first column in the model zoo, and set the attack iteration.
+Iteration can be set to 0 to evaluate its clean image error rate.
+Note that the evaluation result may have a ±0.3 fluctuation due to the
+randomly-chosen target attack label and attack initialization.
+
+Using a K-step attacker makes the evaluation K-times slower.
+To speed up evaluation, run it under MPI with multi-GPU or multiple machines, e.g.:
+
+```
+mpirun -np 8 python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet \
+  --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
+```
+
+Evaluating the `Res152 Denoise` model against 100-step PGD attackers takes about 1 hour with 16 V100s.
+
+
+## Evaluate Black-Box Robustness:
+
+We provide a command line option to produce predictions for an image directory:
+```
+python main.py --eval-directory /path/to/image/directory --load /path/to/model_checkpoint \
+  [--architecture-flags]
+```
+
+This will produce a file "predictions.txt" which contains the filename and
+predicted label for each image found in the directory.
+You can use this to evaluate its black-box robustness.
+
+## Train:
+
+Our code can be used for both standard ImageNet training (with `--attack-iter 0`) and adversarial training.
+Adversarial training takes a long time and we recommend doing it only when you have a lot of GPUs.
+
+To train, first start one data serving process __on each machine__:
+```
+$ ./third_party/serve-data.py --data /path/to/imagenet/ --batch 32
+```
+
+Then, launch a distributed job with MPI. You may need to consult your cluster
+administrator for the MPI command line arguments you should use.
+On a cluster with InfiniBand, it may look like this:
+
+```
+ mpirun -np 16 -H host1:8,host2:8 --output-filename train.log \
+    -bind-to none -map-by slot -mca pml ob1 \
+    -x NCCL_IB_CUDA_SUPPORT=1 -x NCCL_IB_DISABLE=0 -x NCCL_DEBUG=INFO \
+    -x PATH -x PYTHONPATH -x LD_LIBRARY_PATH \
+    python main.py --data /path/to/imagenet \
+        --batch 32 --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
+```
+
+If your cluster is managed by slurm , we provide some sample [slurm job scripts](slurm/)
+for your reference.
+
+The training code will also perform distributed evaluation of white-box robustness.
+
+### Training Speed:
+
+With 30 attack iterations during training,
+the `Res152 Baseline` model takes about 52 hours to finish training on 128 V100s.
+
+Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V100s.
+Note that the model actually does not add much computation to the baseline,
+but it lacks efficient GPU implementation for the softmax version of non-local operation.
+The dot-product version, on the other hand, is much faster.
+
+If you use CUDA≥9.2, TF≥1.12 on Volta GPUs, the flag `--use-fp16xla` will enable XLA-optimized
+FP16 PGD attack, which reduces training time about 2x, with a drop of about 3% robustness.
