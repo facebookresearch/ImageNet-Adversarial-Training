@@ -7,25 +7,25 @@ from resnet_model import (
 
 
 class ResNetModel(AdvImageNetModel):
-    def __init__(self, depth):
+    def __init__(self, args):
         self.num_blocks = {
             50: [3, 4, 6, 3],
             101: [3, 4, 23, 3],
             152: [3, 8, 36, 3],
-        }[depth]
+        }[args.depth]
 
     def get_logits(self, image):
         return resnet_backbone(image, self.num_blocks, resnet_group, resnet_bottleneck)
 
 
-class ResNetDenoiselModel(AdvImageNetModel):
-    def __init__(self, depth, denoise_func_str):
-        self.num_blocks = {
-            50: [3, 4, 6, 3],
-            101: [3, 4, 23, 3],
-            152: [3, 8, 36, 3],
-        }[depth]
-        self.denoise_func_str = denoise_func_str
+#class ResNetDenoiseModel(AdvImageNetModel):
+    #def __init__(self, args):
+        #self.num_blocks = {
+            #50: [3, 4, 6, 3],
+            #101: [3, 4, 23, 3],
+            #152: [3, 8, 36, 3],
+        #}[args.depth]
+        #self.denoise_func_str = args.denoise_func_str
 
-    def get_logits(self, image):
-        return resnet_denoising_backbone(image, self.num_blocks, resnet_group, resnet_bottleneck, self.denoise_func_str)
+    #def get_logits(self, image):
+        #return resnet_denoising_backbone(image, self.num_blocks, resnet_group, resnet_bottleneck, self.denoise_func_str)

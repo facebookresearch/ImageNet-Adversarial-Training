@@ -15,20 +15,20 @@ from tensorpack.utils.stats import RatioCounter
 
 import horovod.tensorflow as hvd
 
+import nets
 from adv_model import NoOpAttacker, PGDAttacker
-from nets import ResNetModel, ResNetDenoiselModel
 from third_party.imagenet_utils import (
     fbresnet_augmentor, get_val_dataflow, eval_on_ILSVRC12)
 from third_party.utils import HorovodClassificationError
 
 
-def get_config(model, fake=False):
+def get_config(model):
     batch = args.batch
     total_batch = batch * hvd.size()
 
-    if fake:
+    if args.fake:
         data = FakeData(
-            [[args.batch, 224, 224, 3], [args.batch]], 1000,
+            [[batch, 224, 224, 3], [batch]], 1000,
             random=False, dtype=['uint8', 'int32'])
         data = StagingInput(QueueInput(data))
         callbacks = []
@@ -63,6 +63,7 @@ def get_config(model, fake=False):
                 interp='linear', step_based=True))
 
     if not args.fake:
+        # Distributed evaluation during training
         def add_eval(name, attacker, condition):
             """
             name (str): a prefix
@@ -70,7 +71,7 @@ def get_config(model, fake=False):
             condition: a function(epoch number) that returns whether this epoch should evaluate or not
             """
             dataflow = get_val_dataflow(
-                args.data, 64, fbresnet_augmentor(False),
+                args.data, 64,
                 num_splits=hvd.size(), split_index=hvd.rank())
             infs = [HorovodClassificationError('wrong-top1', '{}-top1-error'.format(name)),
                     HorovodClassificationError('wrong-top5', '{}-top5-error'.format(name))]
@@ -107,67 +108,63 @@ def get_config(model, fake=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', help='ILSVRC dataset dir')
-    parser.add_argument('--logdir', help='Directory suffix for models and training stats.')
     parser.add_argument('--load', help='load model')
+    parser.add_argument('--logdir', help='Directory suffix for models and training stats.')
     parser.add_argument('--eval', action='store_true', help='run evaluation with --load instead of training.')
 
+    parser.add_argument('--data', help='ILSVRC dataset dir')
     parser.add_argument('--fake', help='use fakedata to test or benchmark this model', action='store_true')
-    parser.add_argument('-d', '--depth', help='resnet depth',
-                        type=int, default=50, choices=[50, 101, 152])
     parser.add_argument('--no-zmq-ops', help='use pure python to send/receive data',
                         action='store_true')
-
-    parser.add_argument('--attack_iter', help='adversarial attack iteration',
-                        type=int, default=10)
-    parser.add_argument('--attack_epsilon', help='adversarial attack maximal perturbation',
-                        type=float, default=8.0)
-    parser.add_argument('--attack_step_size', help='adversarial attack step size',
-                        type=float, default=1.0)
-    # parser.add_argument('--arch', help='architectures defined in nets.py',
-    #                     default='ResNet')
-    # examples: medianpool.ksize_3, nonlocal.embed_False.softmax_False.maxpool_1.avgpool_1
-    #           void, avgpool.ksize_3, globalavgpool
-    parser.add_argument('--denoising_str', help='which denoising function to use',
-                        type=str, default='')
-
     parser.add_argument('--batch', help='per-GPU batch size', default=32, type=int)
+
+    parser.add_argument('--attack-iter', help='adversarial attack iteration',
+                        type=int, default=10)
+    parser.add_argument('--attack-epsilon', help='adversarial attack maximal perturbation',
+                        type=float, default=8.0)
+    parser.add_argument('--attack-step-size', help='adversarial attack step size',
+                        type=float, default=1.0)
+
+    parser.add_argument('-d', '--depth', help='resnet depth',
+                        type=int, default=50, choices=[50, 101, 152])
+    parser.add_argument('--arch', help='architectures defined in nets.py',
+                        default='ResNet')
+    #parser.add_argument('--denoising_str', help='which denoising function to use',
+                        #type=str, default='')
+
     args = parser.parse_args()
 
+    # Define model
+    model = getattr(nets, args.arch + 'Model')(args)
+
+    # Define attacker
     assert args.attack_iter * args.attack_step_size >= args.attack_epsilon
-
-    # parse flags
-    # model = getattr(nets, args.arch + 'Model')(args.depth)
-    if args.denoising_str:
-        model = ResNetDenoiselModel(args.depth, args.denoising_str)
-    else:
-        model = ResNetModel(args.depth)
-
     if args.attack_iter == 0:
-        args.attacker = NoOpAttacker()
+        attacker = NoOpAttacker()
     else:
-        args.attacker = PGDAttacker(
+        attacker = PGDAttacker(
                 args.attack_iter, args.attack_epsilon, args.attack_step_size,
                 prob_start_from_clean=0.2)
+    model.set_attacker(attacker)
+
+    os.system("nvidia-smi")
 
     if args.eval:
         # TODO make it work
-        batch = 128    # something that can run on one gpu
+        batch = args.batch   # something that can run on one gpu
         ds = get_val_dataflow(args.data, batch, fbresnet_augmentor(False))
         eval_on_ILSVRC12(model, get_model_loader(args.load), ds)
         sys.exit()
 
-
     logger.info("Training on {}".format(socket.gethostname()))
-    os.system("nvidia-smi")
     assert args.load is None
 
     hvd.init()
 
     args.logdir = os.path.join(
-        'train_log', '{}'.format(args.denoising_str),
-        'PGD-Res{}-Batch{}-GPUs{}-iter{}-epsilon{}-step{}-{}'.format(
-            args.depth, args.batch, hvd.size(),
+        'train_log',
+        'PGD-{}{}-Batch{}-{}GPUs-iter{}-epsilon{}-step{}-{}'.format(
+            args.arch, args.depth, args.batch, hvd.size(),
             args.attack_iter, args.attack_epsilon, args.attack_step_size,
             args.logdir))
 
@@ -175,9 +172,6 @@ if __name__ == '__main__':
         logger.set_logger_dir(args.logdir, 'd')
     logger.info("Rank={}, Local Rank={}, Size={}".format(hvd.rank(), hvd.local_rank(), hvd.size()))
 
-    model.loss_scale = 1.0 / hvd.size()
-    model.attacker = args.attacker
-
-    config = get_config(model, fake=args.fake)
-    trainer = HorovodTrainer(average=False)
+    config = get_config(model)
+    trainer = HorovodTrainer(average=True)
     launch_train_with_config(config, trainer)

@@ -11,8 +11,7 @@ from tensorpack.dataflow import (
     send_dataflow_zmq, MapData, TestDataSpeed, FakeData, dataset,
     AugmentImageComponent, BatchData, PrefetchDataZMQ)
 from tensorpack.utils import logger
-from imagenet_utils import (
-    fbresnet_augmentor, small_augmentor)
+from third_party.imagenet_utils import fbresnet_augmentor
 
 from zmq_ops import dump_arrays
 
@@ -34,7 +33,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', help='ILSVRC dataset dir')
     parser.add_argument('--fake', action='store_true')
-    parser.add_argument('--aug', choices=['fbresnet', 'small'], default='fbresnet')
     parser.add_argument('--batch', help='per-GPU batch size',
                         default=32, type=int)
     parser.add_argument('--benchmark', action='store_true')
@@ -48,7 +46,7 @@ if __name__ == '__main__':
             [[args.batch, 224, 224, 3], [args.batch]],
             1000, random=False, dtype=['uint8', 'int32'])
     else:
-        augs = fbresnet_augmentor(True) if args.aug == 'fbresnet' else small_augmentor()
+        augs = fbresnet_augmentor(True)
         ds = get_data(args.batch, augs)
 
     logger.info("Serving data on {}".format(socket.gethostname()))

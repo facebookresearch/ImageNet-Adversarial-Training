@@ -52,17 +52,16 @@ class PGDAttacker():
         return tf.floormod(label + label_offset, tf.constant(1000, tf.int32))
 
     def attack(self, image_clean, label, model_func):
-        self.target_label = self._create_random_target(label)
-        self.attack_index = -1
+        target_label = self._create_random_target(label)
 
         def one_step_attack(adv):
             logits = model_func(adv)
             # Note we don't add any summaries here when creating losses, because
             # summaries don't work in conditionals
             losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits, labels=self.target_label)
+                logits=logits, labels=target_label)
             g, = tf.gradients(losses, adv)
-            adv = tf.clip_by_value(adv + self.attack_index * tf.sign(g) * self.step_size, lower_bound, upper_bound)
+            adv = tf.clip_by_value(adv - tf.sign(g) * self.step_size, lower_bound, upper_bound)
             return adv
 
         # rescale the attack epsilon and attack step size
@@ -87,7 +86,9 @@ class PGDAttacker():
 class AdvImageNetModel(ImageNetModel):
 
     label_smoothing = 0.1
-    attacker = None  # To be set from outside
+
+    def set_attacker(self, attacker):
+        self.attacker = attacker
 
     def build_graph(self, image, label):
         image = self.image_preprocess(image)
