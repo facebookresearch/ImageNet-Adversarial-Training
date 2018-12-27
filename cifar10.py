@@ -14,7 +14,6 @@ from tensorpack.utils.gpu import get_num_gpu
 
 CLASS_NUM = 10
 
-LR_SCHEDULE = [(0, 0.1), (100, 0.01), (150, 0.001)]
 WEIGHT_DECAY = 1e-4
 
 FILTER_SIZES = [64, 128, 256, 512]
@@ -168,18 +167,20 @@ def get_data(train_or_test, batch):
 
 
 def get_config(model, dataset_train, dataset_test):
-    lr_rate = model.batch_size // 128
+    START_LR = 0.1
+    BASE_LR = START_LR * (model.batch_size / 128.0)
     callbacks=[
         ModelSaver(),
         EstimatedTimeLeft(),
-        ScheduledHyperParamSetter('learning_rate', lr_rate * LR_SCHEDULE),
+        ScheduledHyperParamSetter('learning_rate',
+                                  [(0, min(START_LR, BASE_LR)), (100, BASE_LR * 1e-1), (150, BASE_LR * 1e-2)]),
     ]
     max_epoch = 200
 
-    if lr_rate > 1:
+    if BASE_LR > START_LR:
         callbacks.append(
             ScheduledHyperParamSetter(
-                'learning_rate', [(0, 0.1), (5 * len(dataset_train), lr_rate * 0.1)],
+                'learning_rate', [(0, START_LR), (5 * len(dataset_train), BASE_LR)],
                 interp='linear', step_based=True))
 
     def add_eval(name, attacker, condition):
