@@ -48,7 +48,7 @@ class PGDAttacker():
 
     def _create_random_target(self, label):
         """ Only support random target for now"""
-        label_offset = tf.random_uniform(tf.shape(label), minval=1, maxval=999, dtype=tf.int32)
+        label_offset = tf.random_uniform(tf.shape(label), minval=1, maxval=1000, dtype=tf.int32)
         return tf.floormod(label + label_offset, tf.constant(1000, tf.int32))
 
     def attack(self, image_clean, label, model_func):
