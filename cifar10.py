@@ -306,7 +306,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', help='batch size for training and testing',
                         type=int, default=128)
     parser.add_argument('--widening_factor', help='widening factor of filter number',
-                        type=int, default=10)
+                        type=int, default=2, choices=[2, 10])
     parser.add_argument('--num_units', help='number of units in each stage',
                         type=int, default=5)
     args = parser.parse_args()
