@@ -9,11 +9,10 @@ import socket
 import numpy as np
 
 import tensorflow as tf
+import horovod.tensorflow as hvd
+
 from tensorpack import *
 from tensorpack.tfutils import get_model_loader
-from tensorpack.utils.stats import RatioCounter
-
-import horovod.tensorflow as hvd
 
 import nets
 from adv_model import NoOpAttacker, PGDAttacker
@@ -22,7 +21,31 @@ from third_party.imagenet_utils import (
 from third_party.utils import HorovodClassificationError
 
 
-def get_config(model):
+def create_eval_callback(name, tower_func, condition):
+    """
+    Create a distributed evaluation callback.
+
+    Args:
+        name (str): a prefix
+        tower_func (TowerFuncWrapper): the inference tower function
+        condition: a function(epoch number) that returns whether this epoch should evaluate or not
+    """
+    dataflow = get_val_dataflow(
+        args.data, args.batch,
+        num_splits=hvd.size(), split_index=hvd.rank())
+    infs = [HorovodClassificationError('wrong-top1', '{}-top1-error'.format(name)),
+            HorovodClassificationError('wrong-top5', '{}-top5-error'.format(name))]
+    cb = InferenceRunner(
+            QueueInput(dataflow), infs,
+            tower_name=name,
+            tower_func=tower_func).set_chief_only(False)
+    cb = EnableCallbackIf(
+        cb,
+        lambda self: condition(self.epoch_num))
+    return cb
+
+
+def do_train(model):
     batch = args.batch
     total_batch = batch * hvd.size()
 
@@ -63,47 +86,33 @@ def get_config(model):
                 interp='linear', step_based=True))
 
     if not args.fake:
-        # Distributed evaluation during training
-        def add_eval(name, attacker, condition):
-            """
-            name (str): a prefix
-            attacker:
-            condition: a function(epoch number) that returns whether this epoch should evaluate or not
-            """
-            dataflow = get_val_dataflow(
-                args.data, 64,
-                num_splits=hvd.size(), split_index=hvd.rank())
-            infs = [HorovodClassificationError('wrong-top1', '{}-top1-error'.format(name)),
-                    HorovodClassificationError('wrong-top5', '{}-top5-error'.format(name))]
-            cb = InferenceRunner(
-                    QueueInput(dataflow), infs,
-                    tower_name=name,
-                    tower_func=model.get_inference_func(attacker)).set_chief_only(False)
-            cb = EnableCallbackIf(
-                cb,
-                # always eval in the last epoch no matter what
-                lambda self: condition(self.epoch_num) or self.epoch_num == max_epoch)
+        def add_eval_callback(name, attacker, condition):
+            cb = create_eval_callback(
+                name,
+                model.get_inference_func(attacker),
+                # always eval in the last 3 epochs no matter what
+                lambda epoch_num: condition(epoch_num) or epoch_num > max_epoch - 3)
             callbacks.append(cb)
 
-        add_eval('eval-clean', NoOpAttacker(), lambda e: True)
-        add_eval('eval-10step', PGDAttacker(10, args.attack_epsilon, args.attack_step_size),
+        add_eval_callback('eval-clean', NoOpAttacker(), lambda e: True)
+        add_eval_callback('eval-10step', PGDAttacker(10, args.attack_epsilon, args.attack_step_size),
             lambda e: True)
-        add_eval('eval-50step', PGDAttacker(50, args.attack_epsilon, args.attack_step_size),
-            lambda e: e % 10 == 0)
-        add_eval('eval-100step', PGDAttacker(100, args.attack_epsilon, args.attack_step_size),
+        add_eval_callback('eval-50step', PGDAttacker(50, args.attack_epsilon, args.attack_step_size),
+            lambda e: e % 20 == 0)
+        add_eval_callback('eval-100step', PGDAttacker(100, args.attack_epsilon, args.attack_step_size),
             lambda e: e % 10 == 0)
         for k in [20, 30, 40, 60, 70, 80, 90]:
-            add_eval('eval-{}step'.format(k),
+            add_eval_callback('eval-{}step'.format(k),
                 PGDAttacker(k, args.attack_epsilon, args.attack_step_size),
                 lambda e: False)
 
-    return TrainConfig(
-        model=model,
-        data=data,
-        callbacks=callbacks,
-        steps_per_epoch=steps_per_epoch,
-        max_epoch=35 if args.fake else max_epoch,
-    )
+    trainer = HorovodTrainer(average=True)
+    trainer.setup_graph(model.get_inputs_desc(), data, model.build_graph, model.get_optimizer)
+    trainer.train_with_defaults(
+            callbacks=callbacks,
+            steps_per_epoch=steps_per_epoch,
+            session_init=get_model_loader(args.load) if args.load is not None else None,
+            max_epoch=35 if args.fake else max_epoch)
 
 
 if __name__ == '__main__':
@@ -144,34 +153,42 @@ if __name__ == '__main__':
     else:
         attacker = PGDAttacker(
                 args.attack_iter, args.attack_epsilon, args.attack_step_size,
-                prob_start_from_clean=0.2)
+                prob_start_from_clean=0.2 if not args.eval else 0.0)
     model.set_attacker(attacker)
 
     os.system("nvidia-smi")
-
-    if args.eval:
-        # TODO make it work
-        batch = args.batch   # something that can run on one gpu
-        ds = get_val_dataflow(args.data, batch, fbresnet_augmentor(False))
-        eval_on_ILSVRC12(model, get_model_loader(args.load), ds)
-        sys.exit()
-
-    logger.info("Training on {}".format(socket.gethostname()))
-    assert args.load is None
-
     hvd.init()
 
-    args.logdir = os.path.join(
-        'train_log',
-        'PGD-{}{}-Batch{}-{}GPUs-iter{}-epsilon{}-step{}-{}'.format(
-            args.arch, args.depth, args.batch, hvd.size(),
-            args.attack_iter, args.attack_epsilon, args.attack_step_size,
-            args.logdir))
+    if args.eval:
+        sessinit = get_model_loader(args.load)
+        if hvd.size() == 1:
+            # single-GPU eval, slow
+            ds = get_val_dataflow(args.data, args.batch)
+            eval_on_ILSVRC12(model, sessinit, ds)
+        else:
+            cb = create_eval_callback(
+                "eval",
+                model.get_inference_func(attacker),
+                lambda e: True)
+            trainer = HorovodTrainer()
+            trainer.setup_graph(model.get_inputs_desc(), PlaceholderInput(), model.build_graph, model.get_optimizer)
+            # train for an empty epoch, to reuse the distributed evaluation code
+            trainer.train_with_defaults(
+                    callbacks=[cb],
+                    monitors=[ScalarPrinter()] if hvd.rank() == 0 else [],
+                    session_init=sessinit,
+                    steps_per_epoch=0, max_epoch=1)
+    else:
+        logger.info("Training on {}".format(socket.gethostname()))
+        args.logdir = os.path.join(
+            'train_log',
+            'PGD-{}{}-Batch{}-{}GPUs-iter{}-epsilon{}-step{}-{}'.format(
+                args.arch, args.depth, args.batch, hvd.size(),
+                args.attack_iter, args.attack_epsilon, args.attack_step_size,
+                args.logdir))
 
-    if hvd.rank() == 0:
-        logger.set_logger_dir(args.logdir, 'd')
-    logger.info("Rank={}, Local Rank={}, Size={}".format(hvd.rank(), hvd.local_rank(), hvd.size()))
+        if hvd.rank() == 0:
+            logger.set_logger_dir(args.logdir, 'd')
+        logger.info("Rank={}, Local Rank={}, Size={}".format(hvd.rank(), hvd.local_rank(), hvd.size()))
 
-    config = get_config(model)
-    trainer = HorovodTrainer(average=True)
-    launch_train_with_config(config, trainer)
+        do_train(model)

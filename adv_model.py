@@ -96,16 +96,13 @@ class AdvImageNetModel(ImageNetModel):
         image = tf.transpose(image, [0, 3, 1, 2])
         ctx = get_current_tower_context()
 
-        if not ctx.is_training:
-            logits = self.get_logits(image)
-        else:
-            with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
-                # BatchNorm always give you trouble
-                with freeze_collection([tf.GraphKeys.UPDATE_OPS]), argscope(BatchNorm, training=False):
-                    image = self.attacker.attack(image, label, self.get_logits)
-                    image = tf.stop_gradient(image, name='adv_training_sample')
+        with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
+            # BatchNorm always give you trouble
+            with freeze_collection([tf.GraphKeys.UPDATE_OPS]), argscope(BatchNorm, training=False):
+                image = self.attacker.attack(image, label, self.get_logits)
+                image = tf.stop_gradient(image, name='adv_training_sample')
 
-                logits = self.get_logits(image)
+            logits = self.get_logits(image)
 
         loss = ImageNetModel.compute_loss_and_error(
             logits, label, label_smoothing=self.label_smoothing)
