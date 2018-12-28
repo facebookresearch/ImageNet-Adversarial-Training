@@ -66,16 +66,8 @@ def denoising(name, l, denoise_func_str):
         if denoise_func_str.startswith('nonlocal'):
             _, embed, softmax, maxpool, avgpool = denoise_func_str.split(".")
             f = non_local_op(l, json.loads(embed.split("_")[1].lower()), json.loads(softmax.split("_")[1].lower()), int(maxpool.split("_")[1]), int(avgpool.split("_")[1]))
-        elif denoise_func_str.startswith('void'):
-            f = l
-        elif denoise_func_str.startswith('avgpool'):
-            _, pooling_size = denoise_func_str.split(".")
-            f = avgpool_op(l, int(pooling_size.split("_")[1]))
-        elif denoise_func_str.startswith('globalavgpool'):
-            f = globalavgpool_op(l)
-        elif denoise_func_str.startswith('medianpool'):
-            _, pooling_size = denoise_func_str.split(".")
-            f = medianpool_op(l, int(pooling_size.split("_")[1]))
+        else:
+            raise NotImplementedError()
         f = Conv2D('conv', f, l.get_shape()[1], 1, strides=1, activation=get_bn(zero_init=True))
         l = l + f
     return l
