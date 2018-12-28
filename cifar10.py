@@ -13,55 +13,60 @@ from tensorpack.tfutils.collection import freeze_collection
 from tensorpack.utils.gpu import get_num_gpu
 
 CLASS_NUM = 10
-
-WEIGHT_DECAY = 1e-4
-
-FILTER_SIZES = [64, 128, 256, 512]
+WEIGHT_DECAY = 0.0002
 
 
-def resnet_shortcut(l, n_out, stride, activation=tf.identity):
-    data_format = get_arg_scope()['Conv2D']['data_format']
-    n_in = l.get_shape().as_list()[1 if data_format in ['NCHW', 'channels_first'] else 3]
-    if n_in != n_out:   # change dimension when channel is not the same
-        return Conv2D('convshortcut', l, n_out, 1, strides=stride, activation=activation)
+def residual_block(name, l, increase_dim=False, widening_factor=2, stride=1, first=False):
+    shape = l.get_shape().as_list()
+    in_channel = shape[1]
+
+    if increase_dim:
+        out_channel = in_channel * widening_factor
     else:
+        out_channel = in_channel
+
+    with tf.variable_scope(name):
+        b1 = l if first else BNReLU(l)
+        c1 = Conv2D('conv1', b1, out_channel, strides=stride, activation=BNReLU)
+        c2 = Conv2D('conv2', c1, out_channel)
+        if increase_dim:
+            l = AvgPooling('pool', l, stride)
+            l = tf.pad(l, [[0, 0], [(out_channel - in_channel) // 2, (out_channel - in_channel) // 2], [0, 0], [0, 0]])
+
+        l = c2 + l
         return l
 
 
 def get_bn(zero_init=False):
-    """
-    Zero init gamma is good for resnet. See https://arxiv.org/abs/1706.02677.
-    """
     if zero_init:
         return lambda x, name=None: BatchNorm('bn', x, gamma_initializer=tf.zeros_initializer())
     else:
         return lambda x, name=None: BatchNorm('bn', x)
 
 
-def residual_block(l, ch_out, stride=1):
-    shortcut = l
-    l = Conv2D('conv1', l, ch_out, 3, strides=stride, activation=BNReLU)
-    l = Conv2D('conv2', l, ch_out, 3, activation=get_bn(zero_init=True))
-    out = l + resnet_shortcut(shortcut, ch_out, stride, activation=get_bn(zero_init=False))
-    return tf.nn.relu(out)
+def denoising_block(name, l, denoising_str):
+    if denoising_str.startswith('nonlocal_dot'):
+        with tf.variable_scope(name):
+            channel = l.shape[1]
+            H, W = l.shape[2], l.shape[3]
+            q, k, v = l, l, l
 
+            if channel > H * W:
+                a = tf.einsum('niab,nicd->nabcd', q, k) # N, H, W, H, W
+                a = tf.einsum('nabcd,nicd->niab', a, v)
+            else:
+                a = tf.einsum('nihw,njhw->nij', q, k) # N, C, C
+                a = tf.einsum('nij,nihw->njhw', a, v)
 
-def nonlocal_dot(l):
-    channel = l.shape[1]
-    H, W = l.shape[2], l.shape[3]
-    q, k, v = l, l, l
-
-    if channel > H * W:
-        a = tf.einsum('niab,nicd->nabcd', q, k) # N, H, W, H, W
-        a = tf.einsum('nabcd,nicd->niab', a, v)
+            a = a * (1.0 / int(H * W))
+            # go through an additional 1x1 conv
+            a = Conv2D('conv', a, channel, 1, strides=1, activation=get_bn(zero_init=True))
+            return l + a
+    elif denoising_str.startswith('None'):
+        return l
     else:
-        a = tf.einsum('nihw,njhw->nij', q, k) # N, C, C
-        a = tf.einsum('nij,nihw->njhw', a, v)
+        raise NotImplementedError()
 
-    a = a * (1.0 / int(H * W))
-    # go through an additional 1x1 conv
-    a = Conv2D('conv', a, channel, 1, strides=1, activation=get_bn(zero_init=True))
-    return l + a
 
 
 class ResNet_Cifar(ModelDesc):
@@ -104,24 +109,32 @@ class ResNet_Cifar(ModelDesc):
         return ce_cost
 
     def get_logits(self, image):
-        pytorch_default_init = tf.variance_scaling_initializer(scale=1.0 / 3, mode='fan_in', distribution='uniform')
-        with argscope([Conv2D, BatchNorm, GlobalAvgPooling], data_format='channels_first'), \
-                argscope(Conv2D, kernel_initializer=pytorch_default_init):
-            net = Conv2D('conv0', image, 64, kernel_size=3, strides=1, use_bias=False)
-            net = nonlocal_dot(net)
-            for i, blocks_in_module in enumerate(4*[self.module_size]):
-                for j in range(blocks_in_module):
-                    stride = 2 if j == 0 and i > 0 else 1
-                    with tf.variable_scope("res%d.%d" % (i, j)):
-                        net = residual_block(net, FILTER_SIZES[i], stride)
-                if self.denoising_str.startswith('nonlocal_dot'):
-                    with tf.variable_scope("res%d.denoising" % (i)):
-                        net = nonlocal_dot(net)
+        with argscope([Conv2D, AvgPooling, BatchNorm, GlobalAvgPooling], data_format='channels_first'), \
+                argscope(Conv2D, use_bias=False, kernel_size=3,
+                         kernel_initializer=tf.variance_scaling_initializer(scale=2.0, mode='fan_out')):
+            l = Conv2D('conv0', image, 16, activation=BNReLU)
+            l = denoising_block('conv0_denoise', l, self.denoising_str)
 
-            net = GlobalAvgPooling('gap', net)
-            logits = FullyConnected('linear', net, CLASS_NUM,
-                                    kernel_initializer=tf.random_normal_initializer(stddev=1e-3))
+            l = residual_block('res1.0', l, first=True, increase_dim=True, widening_factor=self.widening_factor)
+            for k in range(1, self.num_units):
+                l = residual_block('res1.{}'.format(k), l)
+            l = denoising_block('res1_denoise', l, self.denoising_str)
+
+            l = residual_block('res2.0', l, increase_dim=True, stride=2)
+            for k in range(1, self.num_units):
+                l = residual_block('res2.{}'.format(k), l)
+            l = denoising_block('res2_denoise', l, self.denoising_str)
+
+            l = residual_block('res3.0', l, increase_dim=True, stride=2)
+            for k in range(1, self.num_units):
+                l = residual_block('res3.' + str(k), l)
+            l = denoising_block('res3_denoise', l, self.denoising_str)
+
+            l = BNReLU('bnlast', l)
+            l = GlobalAvgPooling('gap', l)
+            logits = FullyConnected('linear', l, 10)
         return logits
+
 
     def get_inference_func(self, attacker):
         """
@@ -292,8 +305,10 @@ if __name__ == '__main__':
     parser.add_argument('--clean', help='run clean image training', action='store_true')
     parser.add_argument('--batch_size', help='batch size for training and testing',
                         type=int, default=128)
-    parser.add_argument('--module_size', help='module size of each residual group',
-                        type=int, default=2)
+    parser.add_argument('--widening_factor', help='widening factor of filter number',
+                        type=int, default=10)
+    parser.add_argument('--num_units', help='number of units in each stage',
+                        type=int, default=5)
     args = parser.parse_args()
 
     if args.batch_size > 128:
@@ -304,11 +319,11 @@ if __name__ == '__main__':
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     if args.clean:
-        log_folder = 'train_log/clean-cifar10-{}-module-{}-GPU-{}-batch-{}'.format(
-                     args.denoising_str, args.module_size, num_gpu, args.batch_size)
+        log_folder = 'train_log/clean-cifar10-{}-num-units-{}-widening-factor-{}-GPU-{}-batch-{}'.format(
+                     args.denoising_str, args.num_units, args.widening_factor, num_gpu, args.batch_size)
     else:
-        log_folder = 'train_log/adv-cifar10-{}-module-{}-GPU-{}-batch-{}-iter{}-epsilon{}-step{}'.format(
-                      args.denoising_str, args.module_size, num_gpu, args.batch_size, args.attack_iter, args.attack_epsilon, args.attack_step_size)
+        log_folder = 'train_log/adv-cifar10-{}-num-units-{}-widening-factor-{}-GPU-{}-batch-{}-iter{}-epsilon{}-step{}'.format(
+                      args.denoising_str, args.num_units, args.widening_factor, num_gpu, args.batch_size, args.attack_iter, args.attack_epsilon, args.attack_step_size)
     logger.set_logger_dir(os.path.join(log_folder))
 
     dataset_train = get_data('train', args.batch_size)
@@ -323,7 +338,8 @@ if __name__ == '__main__':
     model = ResNet_Cifar()
     model.clean = args.clean
     model.batch_size = args.batch_size
-    model.module_size = args.module_size
+    model.num_units = args.num_units
+    model.widening_factor = args.widening_factor
     model.attacker = args.attacker
     model.denoising_str = args.denoising_str
 
