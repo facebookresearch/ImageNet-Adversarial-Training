@@ -292,7 +292,7 @@ class PGDAttacker():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', help='comma separated list of GPU(s) to use.',
-                        default='0,1,2,3,4,5,6,7')
+                        default='0')
     parser.add_argument('--load', help='load model')
     parser.add_argument('--attack_iter', help='adversarial attack iteration',
                         type=int, default=10)
