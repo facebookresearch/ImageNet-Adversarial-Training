@@ -33,8 +33,12 @@ def create_eval_callback(name, tower_func, condition):
     dataflow = get_val_dataflow(
         args.data, args.batch,
         num_splits=hvd.size(), split_index=hvd.rank())
+    # We eval both the classification error rate (for comparison with defensers)
+    # and the attack success rate (for comparison with attackers).
     infs = [HorovodClassificationError('wrong-top1', '{}-top1-error'.format(name)),
-            HorovodClassificationError('wrong-top5', '{}-top5-error'.format(name))]
+            HorovodClassificationError('wrong-top5', '{}-top5-error'.format(name)),
+            HorovodClassificationError('attack_success', '{}-attack-success-rate'.format(name))
+            ]
     cb = InferenceRunner(
             QueueInput(dataflow), infs,
             tower_name=name,
@@ -147,7 +151,6 @@ if __name__ == '__main__':
     model = getattr(nets, args.arch + 'Model')(args)
 
     # Define attacker
-    assert args.attack_iter * args.attack_step_size >= args.attack_epsilon
     if args.attack_iter == 0:
         attacker = NoOpAttacker()
     else:

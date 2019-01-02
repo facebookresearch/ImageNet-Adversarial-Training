@@ -23,7 +23,7 @@ class NoOpAttacker():
     A placeholder attacker which does nothing.
     """
     def attack(self, image, label, model_func):
-        return image
+        return image, -tf.ones_like(label)
 
 
 class PGDAttacker():
@@ -80,7 +80,7 @@ class PGDAttacker():
                 back_prop=False,
                 maximum_iterations=self.num_iter,
                 parallel_iterations=1)
-        return adv_final
+        return adv_final, target_label
 
 
 class AdvImageNetModel(ImageNetModel):
@@ -99,13 +99,14 @@ class AdvImageNetModel(ImageNetModel):
         with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
             # BatchNorm always give you trouble
             with freeze_collection([tf.GraphKeys.UPDATE_OPS]), argscope(BatchNorm, training=False):
-                image = self.attacker.attack(image, label, self.get_logits)
+                image, target_label = self.attacker.attack(image, label, self.get_logits)
                 image = tf.stop_gradient(image, name='adv_training_sample')
 
             logits = self.get_logits(image)
 
         loss = ImageNetModel.compute_loss_and_error(
             logits, label, label_smoothing=self.label_smoothing)
+        AdvImageNetModel.compute_attack_success(logits, target_label)
 
         wd_loss = regularize_cost(self.weight_decay_pattern,
                                   tf.contrib.layers.l2_regularizer(self.weight_decay),
@@ -129,9 +130,10 @@ class AdvImageNetModel(ImageNetModel):
             assert not get_current_tower_context().is_training
             image = self.image_preprocess(image)
             image = tf.transpose(image, [0, 3, 1, 2])
-            image = attacker.attack(image, label, self.get_logits)
+            image, target_label = attacker.attack(image, label, self.get_logits)
             logits = self.get_logits(image)
-            _ = ImageNetModel.compute_loss_and_error(logits, label)  # compute top-1 and top-5
+            ImageNetModel.compute_loss_and_error(logits, label)  # compute top-1 and top-5
+            AdvImageNetModel.compute_attack_success(logits, target_label)
 
         return TowerFuncWrapper(tower_func, self.get_inputs_desc())
 
@@ -142,3 +144,14 @@ class AdvImageNetModel(ImageNetModel):
             # For the purpose of adversarial training, normalize images to [-1,1]
             image = image * IMAGE_SCALE - 1.0
             return image
+
+    @staticmethod
+    def compute_attack_success(logits, target_label):
+        """
+        Compute the attack success rate.
+        """
+        pred = tf.argmax(logits, axis=1, output_type=tf.int32)
+        equal_target = tf.equal(pred, target_label)
+        success = tf.cast(equal_target, tf.float32, name='attack_success')
+        add_moving_summary(tf.reduce_mean(success, name='attack_success_rate'))
+
