@@ -63,50 +63,44 @@ def resnet_backbone(image, num_blocks, group_func, block_func):
 def denoising(name, l, denoise_func_str):
     with tf.variable_scope(name):
         # assign different denoise function
-        if denoise_func_str.startswith('nonlocal'):
-            _, embed, softmax, maxpool, avgpool = denoise_func_str.split(".")
-            f = non_local_op(l, json.loads(embed.split("_")[1].lower()), json.loads(softmax.split("_")[1].lower()), int(maxpool.split("_")[1]), int(avgpool.split("_")[1]))
-        else:
-            raise NotImplementedError()
+        f = non_local_op(l, embed=True, softmax=True)
         f = Conv2D('conv', f, l.get_shape()[1], 1, strides=1, activation=get_bn(zero_init=True))
         l = l + f
     return l
 
 
-def non_local_op(l, embed, softmax, maxpool, avgpool):
+def non_local_op(l, embed, softmax):
+    """
+    Args:
+        embed (bool): whether to use embedding on theta & phi
+        softmax (bool): whether to use softmax
+    """
+    n_in, H, W = l.get_shape().as_list()[1:]
     if embed:
-        n_in = l.get_shape().as_list()[1]
-        theta = Conv2D('embedding_theta', l, n_in/2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-        phi = Conv2D('embedding_phi', l, n_in/2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        theta = Conv2D('embedding_theta', l, n_in / 2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        phi = Conv2D('embedding_phi', l, n_in / 2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        g = l
     else:
-        theta, phi = l, l
-    g_orig = g = l
-    # whether apply pooling function
-    assert (avgpool == 1 or maxpool == 1)
-    if maxpool > 1:
-       phi = MaxPooling('pool_phi', phi, pool_size=maxpool, stride=maxpool)
-       g = MaxPooling('pool_g', g, pool_size=maxpool, stride=maxpool)
-    if avgpool > 1:
-       phi = AvgPooling('pool_phi', phi, pool_size=avgpool, stride=avgpool)
-       g = AvgPooling('pool_g', g, pool_size=avgpool, stride=avgpool)
-    # flatten tensors
-    theta_flat = tf.reshape(theta, [tf.shape(theta)[0], tf.shape(theta)[1], -1])
-    phi_flat = tf.reshape(phi, [tf.shape(phi)[0], tf.shape(phi)[1], -1])
-    g_flat = tf.reshape(g, [tf.shape(g)[0], tf.shape(g)[1], -1])
-    theta_flat.set_shape([theta.shape[0], theta.shape[1], theta.shape[2] * theta.shape[3] if None not in theta.shape[2:] else None])
-    phi_flat.set_shape([phi.shape[0], phi.shape[1], phi.shape[2] * phi.shape[3] if None not in phi.shape[2:] else None])
-    g_flat.set_shape([g.shape[0], g.shape[1], g.shape[2] * g.shape[3] if None not in g.shape[2:] else None])
-    # Compute production
-    f = tf.matmul(theta_flat, phi_flat, transpose_a=True)
-    if softmax:
-        f = tf.nn.softmax(f)
+        theta, phi, g = l, l, l
+    if n_in > H * W or softmax:
+        f = tf.einsum('niab,nicd->nabcd', theta, phi)
+        if softmax:
+            orig_shape = tf.shape(f)
+            f = tf.reshape(f, [-1, H * W, H * W])
+            f = f / tf.sqrt(n_in / 2)
+            f = tf.nn.softmax(f)
+            f = tf.reshape(f, orig_shape)
+        f = tf.einsum('nabcd,nicd->niab', f, g)
     else:
-        f = f / tf.cast(tf.shape(f)[-1], f.dtype)
-    out = tf.matmul(g_flat, f, transpose_b=True)
-    return tf.reshape(out, tf.shape(g_orig))
+        f = tf.einsum('nihw,njhw->nij', phi, g)
+        f = tf.einsum('nij,nihw->njhw', f, theta)
+    if not softmax:
+        f = f / tf.cast(H * W, f.dtype)
+    return tf.reshape(f, tf.shape(l))
 
 
-def resnet_denoising_backbone(image, num_blocks, group_func, block_func, denoise_func_str):
+def resnet_denoising_backbone(image, num_blocks, group_func, block_func, denoise_func_str=None):
+    denoise_func_str = 'nonlocal.embed_True.softmax_True.maxpool_1.avgpool_1'
     with argscope([Conv2D, MaxPooling, AvgPooling, GlobalAvgPooling, BatchNorm], data_format='NCHW'), \
             argscope(Conv2D, use_bias=False,
                      kernel_initializer=tf.variance_scaling_initializer(scale=2.0, mode='fan_out')):
