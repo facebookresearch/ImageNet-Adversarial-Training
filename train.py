@@ -78,8 +78,14 @@ def do_train(model):
         ModelSaver(max_to_keep=10),
         EstimatedTimeLeft(),
         ScheduledHyperParamSetter(
-           'learning_rate', [(0, BASE_LR), (30, BASE_LR * 1e-1), (60, BASE_LR * 1e-2),
-                             (80, BASE_LR * 1e-3)]),
+           'learning_rate', [(0, BASE_LR), (35, BASE_LR * 1e-1), (70, BASE_LR * 1e-2),
+                             (95, BASE_LR * 1e-3)]),
+        """
+        Feature Denoising, Sec 5:
+        Our models are trained for a total of
+        110 epochs; we decrease the learning rate by 10× at the 35-
+        th, 70-th, and 95-th epoch
+        """
     ]
     max_epoch = 110
 
@@ -88,6 +94,11 @@ def do_train(model):
             ScheduledHyperParamSetter(
                 'learning_rate', [(0, 0.1), (5 * steps_per_epoch, BASE_LR)],
                 interp='linear', step_based=True))
+        """
+        ImageNet in 1 Hour, Sec 2.2:
+        we start from a learning rate of η and increment it by a constant amount at
+        each iteration such that it reaches ηˆ = kη after 5 epochs
+        """
 
     if not args.fake:
         def add_eval_callback(name, attacker, condition):
@@ -142,8 +153,6 @@ if __name__ == '__main__':
                         type=int, default=50, choices=[50, 101, 152])
     parser.add_argument('--arch', help='architectures defined in nets.py',
                         default='ResNet')
-    #parser.add_argument('--denoising_str', help='which denoising function to use',
-                        #type=str, default='')
 
     args = parser.parse_args()
 
@@ -156,7 +165,7 @@ if __name__ == '__main__':
     else:
         attacker = PGDAttacker(
                 args.attack_iter, args.attack_epsilon, args.attack_step_size,
-                prob_start_from_clean=0.2 if not args.eval else 0.0)
+                prob_start_from_clean=0.2 if not args.eval else 1.0)
     model.set_attacker(attacker)
 
     os.system("nvidia-smi")

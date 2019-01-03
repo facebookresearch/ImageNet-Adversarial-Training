@@ -4,6 +4,7 @@
 from adv_model import AdvImageNetModel
 from resnet_model import (
     resnet_group, resnet_bottleneck, resnet_backbone, resnet_denoising_backbone)
+from resnet_model import denoising
 
 
 class ResNetModel(AdvImageNetModel):
@@ -27,4 +28,5 @@ class ResNetDenoiseModel(AdvImageNetModel):
         }[args.depth]
 
     def get_logits(self, image):
-        return resnet_denoising_backbone(image, self.num_blocks, resnet_group, resnet_bottleneck)
+        return resnet_denoising_backbone(
+            image, self.num_blocks, resnet_group, resnet_bottleneck, denoising)

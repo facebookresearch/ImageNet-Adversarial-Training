@@ -30,16 +30,19 @@ class PGDAttacker():
     """
     A PGD white-box attacker with random target label.
     """
-    def __init__(self, num_iter, epsilon, step_size, prob_start_from_clean=0.0):
+    def __init__(self, num_iter, epsilon, step_size, prob_start_from_clean=1.0):
         """
         Args:
             num_iter (int):
             epsilon (float):
             step_size (int):
+            prob_start_from_clean (float): The probability to initialize with
+                the original image, rather than a randomly perturbed one.
         """
         step_size = max(step_size, epsilon / num_iter)
         """
-        TODO note
+        Feature Denoising, Sec 6.1:
+        We set its step size α = 1, except for 10-iteration attacks where α is set to α/10= 1.6
         """
         self.num_iter = num_iter
         self.epsilon = epsilon * IMAGE_SCALE
@@ -47,7 +50,12 @@ class PGDAttacker():
         self.prob_start_from_clean = prob_start_from_clean
 
     def _create_random_target(self, label):
-        """ Only support random target for now"""
+        """ Only support random target.
+        Feature Denoising Sec 6:
+        we consider targeted attacks when
+        evaluating under the white-box settings, where the targeted
+        class is selected uniformly at random
+        """
         label_offset = tf.random_uniform(tf.shape(label), minval=1, maxval=1000, dtype=tf.int32)
         return tf.floormod(label + label_offset, tf.constant(1000, tf.int32))
 
@@ -65,11 +73,21 @@ class PGDAttacker():
             return adv
 
         # rescale the attack epsilon and attack step size
+        """
+        Feature Denoising, Sec 6:
+        Adversarial perturbation is considered under L∞ norm (i.e., maximum difference for each pixel).
+        """
         lower_bound = tf.clip_by_value(image_clean - self.epsilon, -1., 1.)
         upper_bound = tf.clip_by_value(image_clean + self.epsilon, -1., 1.)
 
+        """
+        Feature Denoising Sec. 5:
+        We randomly choose from both initializations in the
+        PGD attacker during adversarial training: 20% of training
+        batches use clean images to initialize PGD, and 80% use
+        random points within the allowed .
+        """
         init_start = tf.random_uniform(tf.shape(image_clean), minval=-self.epsilon, maxval=self.epsilon)
-        # A probability to use random initialized example or the clean example to start
         start_from_noise_index = tf.cast(tf.greater(tf.random_uniform(tf.shape(label)), self.prob_start_from_clean), tf.float32)
         start_adv = image_clean + tf.reshape(start_from_noise_index, [tf.shape(label)[0], 1, 1, 1]) * init_start
 
@@ -86,6 +104,10 @@ class PGDAttacker():
 class AdvImageNetModel(ImageNetModel):
 
     label_smoothing = 0.1
+    """
+    Feature Denoising, Sec 5:
+    A label smoothing of 0.1 is used.
+    """
 
     def set_attacker(self, attacker):
         self.attacker = attacker

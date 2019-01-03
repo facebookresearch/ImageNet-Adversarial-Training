@@ -30,7 +30,14 @@ def resnet_bottleneck(l, ch_out, stride):
     shortcut = l
     l = Conv2D('conv1', l, ch_out, 1, strides=1, activation=BNReLU)
     l = Conv2D('conv2', l, ch_out, 3, strides=stride, activation=BNReLU)
+    """
+    ImageNet in 1 Hour, Sec 5.1:
+    the stride-2 convolutions are on 3×3 layers instead of on 1×1 layers
+    """
     l = Conv2D('conv3', l, ch_out * 4, 1, activation=get_bn(zero_init=True))
+    """
+    ImageNet in 1 Hour, Sec 5.1: each residual block's last BN where γ is initialized to be 0
+    """
     ret = l + resnet_shortcut(shortcut, ch_out * 4, stride, activation=get_bn(zero_init=False))
     return tf.nn.relu(ret, name='block_output')
 
@@ -57,13 +64,20 @@ def resnet_backbone(image, num_blocks, group_func, block_func):
         l = GlobalAvgPooling('gap', l)
         logits = FullyConnected('linear', l, 1000,
                                 kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        """
+        ImageNet in 1 Hour, Sec 5.1:
+        The 1000-way fully-connected layer is initialized by
+        drawing weights from a zero-mean Gaussian with standard deviation of 0.01
+        """
     return logits
 
 
-def denoising(name, l, denoise_func_str):
+def denoising(name, l, embed=True, softmax=True):
+    """
+    Feature Denoising, Fig 4 & 5.
+    """
     with tf.variable_scope(name):
-        # assign different denoise function
-        f = non_local_op(l, embed=True, softmax=True)
+        f = non_local_op(l, embed=embed, softmax=softmax)
         f = Conv2D('conv', f, l.get_shape()[1], 1, strides=1, activation=get_bn(zero_init=True))
         l = l + f
     return l
@@ -71,11 +85,12 @@ def denoising(name, l, denoise_func_str):
 
 def non_local_op(l, embed, softmax):
     """
+    Feature Denoising, Sec 4.2 & Fig 5.
     Args:
         embed (bool): whether to use embedding on theta & phi
-        softmax (bool): whether to use softmax
+        softmax (bool): whether to use gaussian (softmax) version or the dot-product version.
     """
-    n_in, H, W = l.get_shape().as_list()[1:]
+    n_in, H, W = l.shape.as_list()[1:]
     if embed:
         theta = Conv2D('embedding_theta', l, n_in / 2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
         phi = Conv2D('embedding_phi', l, n_in / 2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
@@ -87,7 +102,7 @@ def non_local_op(l, embed, softmax):
         if softmax:
             orig_shape = tf.shape(f)
             f = tf.reshape(f, [-1, H * W, H * W])
-            f = f / tf.sqrt(n_in / 2)
+            f = f / tf.sqrt(theta.shape[1])
             f = tf.nn.softmax(f)
             f = tf.reshape(f, orig_shape)
         f = tf.einsum('nabcd,nicd->niab', f, g)
@@ -99,21 +114,25 @@ def non_local_op(l, embed, softmax):
     return tf.reshape(f, tf.shape(l))
 
 
-def resnet_denoising_backbone(image, num_blocks, group_func, block_func, denoise_func_str=None):
-    denoise_func_str = 'nonlocal.embed_True.softmax_True.maxpool_1.avgpool_1'
+def resnet_denoising_backbone(image, num_blocks, group_func, block_func, denoise_func):
+    """
+    Feature Denoising, Sec 6:
+    we add 4 denoising blocks to a ResNet: each is added after the
+    last residual block of res2, res3, res4, and res5, respectively.
+    """
     with argscope([Conv2D, MaxPooling, AvgPooling, GlobalAvgPooling, BatchNorm], data_format='NCHW'), \
             argscope(Conv2D, use_bias=False,
                      kernel_initializer=tf.variance_scaling_initializer(scale=2.0, mode='fan_out')):
         l = Conv2D('conv0', image, 64, 7, strides=2, activation=BNReLU)
         l = MaxPooling('pool0', l, pool_size=3, strides=2, padding='SAME')
         l = group_func('group0', l, block_func, 64, num_blocks[0], 1)
-        l = denoising('group0_denoise_{}'.format(denoise_func_str), l, denoise_func_str)
+        l = denoise_func('group0_denoise', l)
         l = group_func('group1', l, block_func, 128, num_blocks[1], 2)
-        l = denoising('group1_denoise_{}'.format(denoise_func_str), l, denoise_func_str)
+        l = denoise_func('group1_denoise', l)
         l = group_func('group2', l, block_func, 256, num_blocks[2], 2)
-        l = denoising('group2_denoise_{}'.format(denoise_func_str), l, denoise_func_str)
+        l = denoise_func('group2_denoise', l)
         l = group_func('group3', l, block_func, 512, num_blocks[3], 2)
-        l = denoising('group3_denoise_{}'.format(denoise_func_str), l, denoise_func_str)
+        l = denoise_func('group3_denoise', l)
         l = GlobalAvgPooling('gap', l)
         logits = FullyConnected('linear', l, 1000,
                                 kernel_initializer=tf.random_normal_initializer(stddev=0.01))
