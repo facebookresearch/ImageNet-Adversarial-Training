@@ -11,7 +11,7 @@ from tensorpack.utils.stats import RatioCounter
 
 class HorovodClassificationError(Inferencer):
     """
-    Like ClassificationError, it evaluates total samples & count of wrong samples.
+    Like ClassificationError, it evaluates total samples & count of incorrect or correct samples.
     But in the end we aggregate the total&count by horovod.
     """
     def __init__(self, wrong_tensor_name, summary_name='validation_error'):

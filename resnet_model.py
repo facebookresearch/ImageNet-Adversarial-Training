@@ -26,10 +26,17 @@ def get_bn(zero_init=False):
         return lambda x, name=None: BatchNorm('bn', x)
 
 
-def resnet_bottleneck(l, ch_out, stride):
+def resnet_bottleneck(l, ch_out, stride, group=1, res2_bottleneck=64):
+    """
+    Args:
+        group (int): the number of groups for resnext
+        res2_bottleneck (int): the number of channels in res2 bottleneck.
+    The default corresponds to ResNeXt 1x64d, i.e. vanilla ResNet.
+    """
+    ch_factor = res2_bottleneck * group // 64
     shortcut = l
-    l = Conv2D('conv1', l, ch_out, 1, strides=1, activation=BNReLU)
-    l = Conv2D('conv2', l, ch_out, 3, strides=stride, activation=BNReLU)
+    l = Conv2D('conv1', l, ch_out * ch_factor, 1, strides=1, activation=BNReLU)
+    l = Conv2D('conv2', l, ch_out * ch_factor, 3, strides=stride, activation=BNReLU, split=group)
     """
     ImageNet in 1 Hour, Sec 5.1:
     the stride-2 convolutions are on 3×3 layers instead of on 1×1 layers
@@ -78,7 +85,7 @@ def denoising(name, l, embed=True, softmax=True):
     """
     with tf.variable_scope(name):
         f = non_local_op(l, embed=embed, softmax=softmax)
-        f = Conv2D('conv', f, l.get_shape()[1], 1, strides=1, activation=get_bn(zero_init=True))
+        f = Conv2D('conv', f, l.shape[1], 1, strides=1, activation=get_bn(zero_init=True))
         l = l + f
     return l
 
@@ -112,28 +119,3 @@ def non_local_op(l, embed, softmax):
     if not softmax:
         f = f / tf.cast(H * W, f.dtype)
     return tf.reshape(f, tf.shape(l))
-
-
-def resnet_denoising_backbone(image, num_blocks, group_func, block_func, denoise_func):
-    """
-    Feature Denoising, Sec 6:
-    we add 4 denoising blocks to a ResNet: each is added after the
-    last residual block of res2, res3, res4, and res5, respectively.
-    """
-    with argscope([Conv2D, MaxPooling, AvgPooling, GlobalAvgPooling, BatchNorm], data_format='NCHW'), \
-            argscope(Conv2D, use_bias=False,
-                     kernel_initializer=tf.variance_scaling_initializer(scale=2.0, mode='fan_out')):
-        l = Conv2D('conv0', image, 64, 7, strides=2, activation=BNReLU)
-        l = MaxPooling('pool0', l, pool_size=3, strides=2, padding='SAME')
-        l = group_func('group0', l, block_func, 64, num_blocks[0], 1)
-        l = denoise_func('group0_denoise', l)
-        l = group_func('group1', l, block_func, 128, num_blocks[1], 2)
-        l = denoise_func('group1_denoise', l)
-        l = group_func('group2', l, block_func, 256, num_blocks[2], 2)
-        l = denoise_func('group2_denoise', l)
-        l = group_func('group3', l, block_func, 512, num_blocks[3], 2)
-        l = denoise_func('group3_denoise', l)
-        l = GlobalAvgPooling('gap', l)
-        logits = FullyConnected('linear', l, 1000,
-                                kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-    return logits
