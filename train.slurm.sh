@@ -30,12 +30,12 @@ DATA_PID=$!
 # launch training
 # https://www.open-mpi.org/faq/?category=openfabrics#ib-router has document on IB options
 # the queue parameters sometimes can hang the communication (for some MPI versions and some operations)
+	#-mca btl tcp,self \
 mpirun -output-filename logs/train-$SLURM_JOB_ID.log -tag-output \
 	-bind-to none -map-by slot \
 	-mca pml ob1 -mca btl_openib_receive_queues P,128,32:P,2048,32:P,12288,32:P,65536,32 \
 	-x NCCL_IB_CUDA_SUPPORT=1 -x NCCL_IB_DISABLE=0 -x NCCL_DEBUG=INFO \
-	python ./train.py -d 50 --data $DATA_PATH \
-	  --batch $BATCH $CONFIG &
+	python ./train.py --data $DATA_PATH --batch $BATCH $CONFIG &
 MPI_PID=$!
 
 wait $MPI_PID

@@ -109,7 +109,7 @@ def non_local_op(l, embed, softmax):
         if softmax:
             orig_shape = tf.shape(f)
             f = tf.reshape(f, [-1, H * W, H * W])
-            f = f / tf.sqrt(theta.shape[1])
+            f = f / tf.sqrt(tf.cast(theta.shape[1], tf.float32))
             f = tf.nn.softmax(f)
             f = tf.reshape(f, orig_shape)
         f = tf.einsum('nabcd,nicd->niab', f, g)

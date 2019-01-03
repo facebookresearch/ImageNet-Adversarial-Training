@@ -80,14 +80,14 @@ def do_train(model):
         EstimatedTimeLeft(),
         ScheduledHyperParamSetter(
            'learning_rate', [(0, BASE_LR), (35, BASE_LR * 1e-1), (70, BASE_LR * 1e-2),
-                             (95, BASE_LR * 1e-3)]),
-        """
-        Feature Denoising, Sec 5:
-        Our models are trained for a total of
-        110 epochs; we decrease the learning rate by 10× at the 35-
-        th, 70-th, and 95-th epoch
-        """
+                             (95, BASE_LR * 1e-3)])
     ]
+    """
+    Feature Denoising, Sec 5:
+    Our models are trained for a total of
+    110 epochs; we decrease the learning rate by 10× at the 35-
+    th, 70-th, and 95-th epoch
+    """
     max_epoch = 110
 
     if BASE_LR > 0.1:
