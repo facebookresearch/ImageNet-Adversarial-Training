@@ -13,11 +13,15 @@
 
 ## Model Zoo:
 
-| Model                                      | error rate w/ <br/> clean images | error rate & attack success rate <br/> against 10-step PGD | error rate & attack success rate <br/> against 100-step PGD | error rate & attack success rate <br/> against 1000-step PGD | Flags                               |
-|:-------------------------------------------|:--------------------------------:|:----------------------------------------------------------:|:-----------------------------------------------------------:|--------------------------------------------------------------|:-----------------------------------:|
-| Res152 Baseline [:arrow_down:]()           | 8%                               | 3%                                                         | 3%                                                          |                                                              | `--arch ResNet -d 152`              |
-| Res152 Denoise    [:arrow_down:]()         | 6%                               | 4%                                                         | 4%                                                          |                                                              | `--arch ResNetDenoise -d 152`       |
-| ResNeXt101 Dense Denoise  [:arrow_down:]() | 5%                               | 7%                                                         | 7%                                                          |                                                              | `--arch ResNeXtDenseDenoise -d 101` |
+| Model (expand for flags)                                                                                                                      | error rate <br/> clean images | error & attack rate <br/> 10-step PGD | error & attack rate <br/> 100-step PGD | error & attack rate <br/> 1000-step PGD |
+|:----------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------:|:-------------------------------------:|:--------------------------------------:|-----------------------------------------|
+| <details><summary>Res152 Baseline [:arrow_down:](R152) </summary> `--arch ResNet -d 152`</details>                                            | 8%                            | 3%                                    | 3%                                     |                                         |
+| <details><summary>Res152 Denoise  [:arrow_down:](R152Denoise) </summary> `--arch ResNetDenoise -d 152`</details>                              | 6%                            | 4%                                    | 4%                                     |                                         |
+| <details><summary>ResNeXt101 Dense Denoise  [:arrow_down:](X101DenseDenoise) </summary>`--arch ResNeXtDenseDenoise` <br/> `-d 101` </details> | 5%                            | 7%                                    | 7%                                     |                                         |
+
+[R152]: http://url.npz
+[R152Denoise]: http://url.npz
+[X101DenseDenoise]: http://url.npz
 
 Note:
 
@@ -82,7 +86,7 @@ You can use this to evaluate its black-box robustness.
 Adversarial training takes a long time and we recommend doing it only when you have a lot of GPUs.
 You can use our code for standard ImageNet training as well (with `--attack-iter 0`).
 
-To train, first start the data serving process __once on each machine___:
+To train, first start one data serving process __on each machine__:
 ```
 $ ./serve-data.py --data /path/to/imagenet/ --batch 32
 ```
