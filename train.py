@@ -3,6 +3,7 @@
 # File: imagenet-resnet-horovod.py
 
 import argparse
+import glob
 import sys
 import os
 import socket
@@ -135,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--load', help='load model')
     parser.add_argument('--logdir', help='Directory suffix for models and training stats.')
     parser.add_argument('--eval', action='store_true', help='run evaluation with --load instead of training.')
+    parser.add_argument('--eval-directory', help='path to a directory of images to classify')
 
     parser.add_argument('--data', help='ILSVRC dataset dir')
     parser.add_argument('--fake', help='use fakedata to test or benchmark this model', action='store_true')
@@ -143,9 +145,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch', help='per-GPU batch size', default=32, type=int)
 
     parser.add_argument('--attack-iter', help='adversarial attack iteration',
-                        type=int, default=10)
+                        type=int, default=30)
     parser.add_argument('--attack-epsilon', help='adversarial attack maximal perturbation',
-                        type=float, default=8.0)
+                        type=float, default=16.0)
     parser.add_argument('--attack-step-size', help='adversarial attack step size',
                         type=float, default=1.0)
 
@@ -160,7 +162,7 @@ if __name__ == '__main__':
     model = getattr(nets, args.arch + 'Model')(args)
 
     # Define attacker
-    if args.attack_iter == 0:
+    if args.attack_iter == 0 or args.eval_directory:
         attacker = NoOpAttacker()
     else:
         attacker = PGDAttacker(
@@ -190,6 +192,35 @@ if __name__ == '__main__':
                     monitors=[ScalarPrinter()] if hvd.rank() == 0 else [],
                     session_init=sessinit,
                     steps_per_epoch=0, max_epoch=1)
+    if args.eval_directory:
+        sessinit = get_model_loader(args.load)
+        assert hvd.size() == 1
+        files = glob.glob(os.path.join(args.eval_directory, '*.*'))
+        ds = ImageFromFile(files, resize=224)
+        ds = BatchData(ds, 32, remainder=True)
+        ds = MapData(ds, lambda dp: [dp[0][:, :, :, ::-1]])
+        # the model expects BGR images instead of RGB
+
+        pred_config = PredictConfig(
+            model=model,
+            session_init=sessinit,
+            input_names=['input'],
+            output_names=['linear/output']
+        )
+        predictor = SimpleDatasetPredictor(pred_config, ds)
+
+        logger.info("Inference on {} images in {}".format(len(files), args.eval_directory))
+        results = []
+        for logits, in predictor.get_result():
+            predictions = list(np.argmax(logits, axis=1))
+            results.extend(predictions)
+        assert len(results) == len(files)
+        output_filename = "predictions.txt"
+        with open(output_filename, "w") as f:
+            for filename, label in zip(files, results):
+                f.write("{}\t{}\n".format(filename, label))
+        logger.info("Outputs saved to " + output_filename)
+
     else:
         logger.info("Training on {}".format(socket.gethostname()))
         args.logdir = os.path.join(

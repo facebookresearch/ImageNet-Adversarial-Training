@@ -117,7 +117,6 @@ class ImageNetModel(ModelDesc):
     """
     uint8 instead of float32 is used as input type to reduce copy overhead.
     It might hurt the performance a liiiitle bit.
-    The pretrained models were trained with float32.
     """
     image_dtype = tf.uint8
 
