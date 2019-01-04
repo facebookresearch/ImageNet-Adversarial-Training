@@ -12,16 +12,50 @@
 
 
 ## Model Zoo:
+<table>
+<thead>
+<tr>
+<th align="left" rowspan=2>Model (expand for flags)</th>
+<th align="center">error rate</th>
+<th align="center" colspan=3>error &amp; attack success rate</th>
+</tr>
+<tr>
+<th align="center">clean images</th>
+<th align="center">10-step PGD</th>
+<th align="center">100-step PGD</th>
+<th align="center">1000-step PGD</th>
+</tr>
+</thead>
 
-| Model (expand for flags)                                                                                                                      | error rate <br/> clean images | error & attack rate <br/> 10-step PGD | error & attack rate <br/> 100-step PGD | error & attack rate <br/> 1000-step PGD |
-|:----------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------:|:-------------------------------------:|:--------------------------------------:|-----------------------------------------|
-| <details><summary>Res152 Baseline [:arrow_down:](R152) </summary> `--arch ResNet -d 152`</details>                                            | 8%                            | 3%                                    | 3%                                     |                                         |
-| <details><summary>Res152 Denoise  [:arrow_down:](R152Denoise) </summary> `--arch ResNetDenoise -d 152`</details>                              | 6%                            | 4%                                    | 4%                                     |                                         |
-| <details><summary>ResNeXt101 Block-Denoise  [:arrow_down:](X101BlockDenoise) </summary>`--arch ResNeXtBlockDenoise` <br/> `-d 101` </details> | 5%                            | 7%                                    | 7%                                     |                                         |
 
-[R152]: http://url.npz
-[R152Denoise]: http://url.npz
-[X101BlockDenoise]: http://url.npz
+<tbody>
+<tr>
+<td align="left"><details><summary>ResNet152 Baseline <a href="R152"> :arrow_down: </a> </summary> <code>--arch ResNet -d 152</code></details></td>
+<td align="center">8%</td>
+<td align="center">3%</td>
+<td align="center">3%</td>
+<td></td>
+</tr>
+  
+<tr>
+<td align="left"><details><summary>ResNet152 Denoise  <a href="R152Denoise"> :arrow_down: </a> </summary> <code>--arch ResNetDenoise -d 152</code></details></td>
+<td align="center">6%</td>
+<td align="center">4%</td>
+<td align="center">4%</td>
+<td></td>
+</tr>
+
+<tr>
+<td align="left"><details><summary>ResNeXt101 Block-Denoise  <a href="X101BlockDenoise"> :arrow_down: </a> </summary><code>--arch ResNeXtBlockDenoise</code> <br> <code>-d 101</code> </details></td>
+<td align="center">5%</td>
+<td align="center">7%</td>
+<td align="center">7%</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+
 
 Note:
 
@@ -35,7 +69,7 @@ Note:
 
 2. For each (attacker, model) pair, we provide both the __error rate__ of our model,
    and the __attack success rate__ of the attacker, on the ImageNet validation set.
-   A target attack is considered successful if the image is classified to the target label.
+   A targeted attack is considered successful if the image is classified to the target label.
 
    If you develop a new robust model, please compare its error rate with our models.
    Don't compare the attack success rate, because then the model can cheat by making random predictions.
