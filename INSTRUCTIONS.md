@@ -17,24 +17,24 @@
 |:----------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------:|:-------------------------------------:|:--------------------------------------:|-----------------------------------------|
 | <details><summary>Res152 Baseline [:arrow_down:](R152) </summary> `--arch ResNet -d 152`</details>                                            | 8%                            | 3%                                    | 3%                                     |                                         |
 | <details><summary>Res152 Denoise  [:arrow_down:](R152Denoise) </summary> `--arch ResNetDenoise -d 152`</details>                              | 6%                            | 4%                                    | 4%                                     |                                         |
-| <details><summary>ResNeXt101 Dense Denoise  [:arrow_down:](X101DenseDenoise) </summary>`--arch ResNeXtDenseDenoise` <br/> `-d 101` </details> | 5%                            | 7%                                    | 7%                                     |                                         |
+| <details><summary>ResNeXt101 Block-Denoise  [:arrow_down:](X101BlockDenoise) </summary>`--arch ResNeXtBlockDenoise` <br/> `-d 101` </details> | 5%                            | 7%                                    | 7%                                     |                                         |
 
 [R152]: http://url.npz
 [R152Denoise]: http://url.npz
-[X101DenseDenoise]: http://url.npz
+[X101BlockDenoise]: http://url.npz
 
 Note:
 
-1. As mentioned in the paper, our attack scenario is: 
+1. As mentioned in the paper, our attack scenario is:
 
-   1. targeted attack with random uniform target label 
+   1. targeted attack with random uniform target label
    2. maximum perturbation per pixel is 16.
-   
-   We do not perform untargeted attack, nor do we let the attacker choose the target label, 
+
+   We do not perform untargeted attack, nor do we let the attacker choose the target label,
    because we believe such tasks are not realistic on the 1000 ImageNet classes.
 
-2. For each (attacker, model) pair, we provide both the __error rate__ of our model, 
-   and the __attack success rate__ of the attacker, on the ImageNet validation set. 
+2. For each (attacker, model) pair, we provide both the __error rate__ of our model,
+   and the __attack success rate__ of the attacker, on the ImageNet validation set.
    A target attack is considered successful if the image is classified to the target label.
 
    If you develop a new robust model, please compare its error rate with our models.
@@ -45,7 +45,7 @@ Note:
    Don't compare the error rate, because then the method can cheat by becoming
    untargeted attacks.
 
-3. "ResNeXt101 Dense Denoise" is the submission that won the champion of
+3. "ResNeXt101 Block-Denoise" is the submission that won the champion of
    black-box defense track in [Competition on Adversarial Attacks and Defenses 2018](https://en.caad.geekpwn.org/).
 
 
@@ -54,7 +54,7 @@ Note:
 To evaluate on one GPU, run this command:
 ```
 python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet \
-  --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags] 
+  --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
 ```
 
 The "architecture flags" for the pre-trained models are available in the model zoo.
@@ -66,7 +66,7 @@ To speed up evaluation, run it under MPI with multi-GPU or multiple machines, e.
 
 ```
 mpirun -np 8 python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet \
-  --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags] 
+  --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
 ```
 
 Evaluating the `Res152 Denoise` model against 100-step PGD attackers takes about 1 hour with 16 V100s.
@@ -95,7 +95,7 @@ $ ./serve-data.py --data /path/to/imagenet/ --batch 32
 ```
 
 Then, launch a distributed job with MPI. You may need to consult your cluster
-administrator for the MPI command line arguments you should use. 
+administrator for the MPI command line arguments you should use.
 On a cluster with InfiniBand, it may look like this:
 
 ```
@@ -108,13 +108,13 @@ On a cluster with InfiniBand, it may look like this:
 ```
 
 If your cluster is managed by SLURM, we provide some sample slurm job scripts
-(see `train.slurm.sh` and `eval.slurm.sh`) for your reference. 
+(see `train.slurm.sh` and `eval.slurm.sh`) for your reference.
 
 The training code will also perform distributed evaluation of white-box robustness.
 
 ### Speed:
 
-With 30 attack iterations during training, 
+With 30 attack iterations during training,
 the `Res152 Baseline` model takes about 52 hours to finish training on 128 V100s.
 
 Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V100s.
