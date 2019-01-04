@@ -59,6 +59,7 @@ python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet 
 
 The "architecture flags" for the pre-trained models are available in the model zoo.
 `attack-iter` can be set to 0 to evaluate its clean image error rate.
+Due to the randomly-chosen target label, the evaluation result may have a ±0.1 fluctuation.
 
 Using a K-step attacker can make the evaluation K-times slower.
 To speed up evaluation, run it under MPI with multi-GPU or multiple machines, e.g.:
@@ -67,6 +68,8 @@ To speed up evaluation, run it under MPI with multi-GPU or multiple machines, e.
 mpirun -np 8 python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet \
   --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags] 
 ```
+
+Evaluating the `Res152 Denoise` model against 100-step PGD attackers takes about 1 hour with 16 V100s.
 
 
 ## Evaluate Black-Box Robustness:
@@ -108,3 +111,12 @@ If your cluster is managed by SLURM, we provide some sample slurm job scripts
 (see `train.slurm.sh` and `eval.slurm.sh`) for your reference. 
 
 The training code will also perform distributed evaluation of white-box robustness.
+
+### Speed:
+
+With 30 attack iterations during training, 
+the `Res152 Baseline` model takes about 52 hours to finish training on 128 V100s.
+
+Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V100s.
+Note that the model actually does not add much computation to the baseline,
+but it currently lacks efficient GPU implementation.
