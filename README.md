@@ -16,7 +16,7 @@ Trained on __128 GPUs__, our ImageNet classifier has 42.6% accuracy against an e
 __2000-steps__ white-box PGD attacker. 
 This is a scenario where no previous models have achieved more than 1% accuracy.
 
-On black-box adversarial defense, our method won the champion of defense track in the
+On black-box adversarial defense, our method won the __champion of defense track__ in the
 [CAAD (Competition of Adversarial Attacks and Defenses) 2018](https://en.caad.geekpwn.org).
 It also greatly outperform the CAAD 2017 defense track winner when evaluated
 against CAAD 2017 black-box attackers.

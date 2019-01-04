@@ -197,13 +197,13 @@ if __name__ == '__main__':
         ds = ImageFromFile(files, resize=224)
         ds = BatchData(ds, 32, remainder=True)
         ds = MapData(ds, lambda dp: [dp[0][:, :, :, ::-1]])
-        # the model expects BGR images instead of RGB
+        # Our model expects BGR images instead of RGB
 
         pred_config = PredictConfig(
             model=model,
             session_init=sessinit,
             input_names=['input'],
-            output_names=['linear/output']
+            output_names=['linear/output']  # the logits
         )
         predictor = SimpleDatasetPredictor(pred_config, ds)
 
