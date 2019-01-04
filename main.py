@@ -31,7 +31,7 @@ def create_eval_callback(name, tower_func, condition):
     dataflow = get_val_dataflow(
         args.data, args.batch,
         num_splits=hvd.size(), split_index=hvd.rank())
-    # We eval both the classification error rate (for comparison with defensers)
+    # We eval both the classification error rate (for comparison with defenders)
     # and the attack success rate (for comparison with attackers).
     infs = [HorovodClassificationError('wrong-top1', '{}-top1-error'.format(name)),
             HorovodClassificationError('wrong-top5', '{}-top5-error'.format(name)),

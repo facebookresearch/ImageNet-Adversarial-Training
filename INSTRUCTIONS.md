@@ -1,10 +1,10 @@
 
 ## Dependencies:
 
-+ TensorFlow≥1.6 with GPU support
++ TensorFlow ≥ 1.6 with GPU support
 + OpenCV 3
-+ Tensorpack==0.9.1
-+ horovod≥0.15 with NCCL support
++ Tensorpack = 0.9.1
++ horovod ≥ 0.15 with NCCL support
   + horovod has many [installation options](https://github.com/uber/horovod/blob/master/docs/gpus.md) to optimize its multi-machine/multi-GPU performance.
     You might want to follow them.
 + TensorFlow [zmq_ops](https://github.com/tensorpack/zmq_ops) (needed only for training)
@@ -68,15 +68,15 @@ Note:
    because we believe such tasks are not realistic on the 1000 ImageNet classes.
 
 2. For each (attacker, model) pair, we provide both the __error rate__ of our model,
-   and the __attack success rate__ of the attacker, on the ImageNet validation set.
+   and the __attack success rate__ of the attacker, on ImageNet validation set.
    A targeted attack is considered successful if the image is classified to the target label.
 
    If you develop a new robust model, please compare its error rate with our models.
-   Don't compare the attack success rate, because then the model can cheat by making random predictions.
+   Attack success rate is not a reasonable metric, because then the model can cheat by making random predictions.
 
    If you develop a new attack method against our models,
    please compare its attack success rate with PGD.
-   Don't compare the error rate, because then the method can cheat by becoming
+   Error rate is not a reasonable metric, because then the method can cheat by becoming
    untargeted attacks.
 
 3. `ResNeXt101 DenoiseAll` is the submission that won the champion of
@@ -91,11 +91,12 @@ python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet 
   --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
 ```
 
-The "architecture flags" for the pre-trained models are available in the model zoo.
-`attack-iter` can be set to 0 to evaluate its clean image error rate.
-Due to the randomly-chosen target label, the evaluation result may have a ±0.1 fluctuation.
+To reproduce our evaluation results,
+take "architecture flags" from the first column, and set the attack iteration.
+Iteration can be set to 0 to evaluate its clean image error rate.
+Note that the evaluation result may have a ±0.1 fluctuation due to the randomly-chosen target attack label.
 
-Using a K-step attacker can make the evaluation K-times slower.
+Using a K-step attacker makes the evaluation K-times slower.
 To speed up evaluation, run it under MPI with multi-GPU or multiple machines, e.g.:
 
 ```
@@ -153,4 +154,4 @@ the `Res152 Baseline` model takes about 52 hours to finish training on 128 V100s
 
 Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V100s.
 Note that the model actually does not add much computation to the baseline,
-but it currently lacks efficient GPU implementation.
+but it lacks efficient GPU implementation for the softmax version of non-local operation.
