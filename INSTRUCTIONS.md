@@ -36,7 +36,7 @@
 <td align="center">3%</td>
 <td></td>
 </tr>
-  
+
 <tr>
 <td align="left"><details><summary>ResNet152 Denoise  <a href="R152Denoise"> :arrow_down: </a> </summary> <code>--arch ResNetDenoise -d 152</code></details></td>
 <td align="center">6%</td>
@@ -46,7 +46,7 @@
 </tr>
 
 <tr>
-<td align="left"><details><summary>ResNeXt101 Block-Denoise  <a href="X101BlockDenoise"> :arrow_down: </a> </summary><code>--arch ResNeXtBlockDenoise</code> <br> <code>-d 101</code> </details></td>
+<td align="left"><details><summary>ResNeXt101 DenoiseAll  <a href="X101DenoiseAll"> :arrow_down: </a> </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> </details></td>
 <td align="center">5%</td>
 <td align="center">7%</td>
 <td align="center">7%</td>
@@ -79,7 +79,7 @@ Note:
    Don't compare the error rate, because then the method can cheat by becoming
    untargeted attacks.
 
-3. "ResNeXt101 Block-Denoise" is the submission that won the champion of
+3. `ResNeXt101 DenoiseAll` is the submission that won the champion of
    black-box defense track in [Competition on Adversarial Attacks and Defenses 2018](https://en.caad.geekpwn.org/).
 
 

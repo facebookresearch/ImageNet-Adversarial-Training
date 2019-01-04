@@ -41,7 +41,7 @@ class ResNetDenoiseModel(AdvImageNetModel):
         return resnet_backbone(image, self.num_blocks, group_func, resnet_bottleneck)
 
 
-class ResNeXtBlockDenoiseModel(AdvImageNetModel):
+class ResNeXtDenoiseAllModel(AdvImageNetModel):
     """
     ResNeXt 32x8d that performs denoising after every residual block.
     """
