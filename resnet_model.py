@@ -3,9 +3,6 @@
 # File: resnet_model.py
 
 import tensorflow as tf
-import json
-
-from tensorpack.utils import logger
 from tensorpack.tfutils.argscope import argscope
 from tensorpack.models import (
     Conv2D, MaxPooling, AvgPooling, GlobalAvgPooling, BatchNorm, FullyConnected, BNReLU)

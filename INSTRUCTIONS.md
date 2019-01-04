@@ -33,8 +33,8 @@ Note:
    We do not perform untargeted attack, nor do we let the attacker choose the target label, 
    because we believe such tasks are not realistic on the 1000 ImageNet classes.
 
-2. For each (attacker, model) pair, we provide both the error rate of our model, 
-   and the attack success rate of the attacker, on the ImageNet validation set. 
+2. For each (attacker, model) pair, we provide both the __error rate__ of our model, 
+   and the __attack success rate__ of the attacker, on the ImageNet validation set. 
    A target attack is considered successful if the image is classified to the target label.
 
    If you develop a new robust model, please compare its error rate with our models.
@@ -45,7 +45,7 @@ Note:
    Don't compare the error rate, because then the method can cheat by becoming
    untargeted attacks.
 
-3. The "ResNeXt101 Dense Denoise" is the submission that won the champion of
+3. "ResNeXt101 Dense Denoise" is the submission that won the champion of
    black-box defense track in [Competition on Adversarial Attacks and Defenses 2018](https://en.caad.geekpwn.org/).
 
 

@@ -4,12 +4,10 @@
 
 import argparse
 import glob
-import sys
 import os
 import socket
 import numpy as np
 
-import tensorflow as tf
 import horovod.tensorflow as hvd
 
 from tensorpack import *
@@ -17,8 +15,7 @@ from tensorpack.tfutils import get_model_loader
 
 import nets
 from adv_model import NoOpAttacker, PGDAttacker
-from third_party.imagenet_utils import (
-    fbresnet_augmentor, get_val_dataflow, eval_on_ILSVRC12)
+from third_party.imagenet_utils import get_val_dataflow, eval_on_ILSVRC12
 from third_party.utils import HorovodClassificationError
 
 
@@ -41,12 +38,11 @@ def create_eval_callback(name, tower_func, condition):
             HorovodClassificationError('attack_success', '{}-attack-success-rate'.format(name))
             ]
     cb = InferenceRunner(
-            QueueInput(dataflow), infs,
-            tower_name=name,
-            tower_func=tower_func).set_chief_only(False)
+        QueueInput(dataflow), infs,
+        tower_name=name,
+        tower_func=tower_func).set_chief_only(False)
     cb = EnableCallbackIf(
-        cb,
-        lambda self: condition(self.epoch_num))
+        cb, lambda self: condition(self.epoch_num))
     return cb
 
 
@@ -112,23 +108,23 @@ def do_train(model):
 
         add_eval_callback('eval-clean', NoOpAttacker(), lambda e: True)
         add_eval_callback('eval-10step', PGDAttacker(10, args.attack_epsilon, args.attack_step_size),
-            lambda e: True)
+                          lambda e: True)
         add_eval_callback('eval-50step', PGDAttacker(50, args.attack_epsilon, args.attack_step_size),
-            lambda e: e % 20 == 0)
+                          lambda e: e % 20 == 0)
         add_eval_callback('eval-100step', PGDAttacker(100, args.attack_epsilon, args.attack_step_size),
-            lambda e: e % 10 == 0)
+                          lambda e: e % 10 == 0)
         for k in [20, 30, 40, 60, 70, 80, 90]:
             add_eval_callback('eval-{}step'.format(k),
-                PGDAttacker(k, args.attack_epsilon, args.attack_step_size),
-                lambda e: False)
+                              PGDAttacker(k, args.attack_epsilon, args.attack_step_size),
+                              lambda e: False)
 
     trainer = HorovodTrainer(average=True)
     trainer.setup_graph(model.get_inputs_desc(), data, model.build_graph, model.get_optimizer)
     trainer.train_with_defaults(
-            callbacks=callbacks,
-            steps_per_epoch=steps_per_epoch,
-            session_init=get_model_loader(args.load) if args.load is not None else None,
-            max_epoch=35 if args.fake else max_epoch)
+        callbacks=callbacks,
+        steps_per_epoch=steps_per_epoch,
+        session_init=get_model_loader(args.load) if args.load is not None else None,
+        max_epoch=max_epoch)
 
 
 if __name__ == '__main__':
@@ -144,6 +140,7 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--batch', help='per-GPU batch size', default=32, type=int)
 
+    # attacker flags:
     parser.add_argument('--attack-iter', help='adversarial attack iteration',
                         type=int, default=30)
     parser.add_argument('--attack-epsilon', help='adversarial attack maximal perturbation',
@@ -151,6 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--attack-step-size', help='adversarial attack step size',
                         type=float, default=1.0)
 
+    # architecture flags:
     parser.add_argument('-d', '--depth', help='resnet depth',
                         type=int, default=50, choices=[50, 101, 152])
     parser.add_argument('--arch', help='architectures defined in nets.py',
@@ -166,8 +164,8 @@ if __name__ == '__main__':
         attacker = NoOpAttacker()
     else:
         attacker = PGDAttacker(
-                args.attack_iter, args.attack_epsilon, args.attack_step_size,
-                prob_start_from_clean=0.2 if not args.eval else 1.0)
+            args.attack_iter, args.attack_epsilon, args.attack_step_size,
+            prob_start_from_clean=0.2 if not args.eval else 1.0)
     model.set_attacker(attacker)
 
     os.system("nvidia-smi")
@@ -188,10 +186,10 @@ if __name__ == '__main__':
             trainer.setup_graph(model.get_inputs_desc(), PlaceholderInput(), model.build_graph, model.get_optimizer)
             # train for an empty epoch, to reuse the distributed evaluation code
             trainer.train_with_defaults(
-                    callbacks=[cb],
-                    monitors=[ScalarPrinter()] if hvd.rank() == 0 else [],
-                    session_init=sessinit,
-                    steps_per_epoch=0, max_epoch=1)
+                callbacks=[cb],
+                monitors=[ScalarPrinter()] if hvd.rank() == 0 else [],
+                session_init=sessinit,
+                steps_per_epoch=0, max_epoch=1)
     if args.eval_directory:
         sessinit = get_model_loader(args.load)
         assert hvd.size() == 1
@@ -220,7 +218,6 @@ if __name__ == '__main__':
             for filename, label in zip(files, results):
                 f.write("{}\t{}\n".format(filename, label))
         logger.info("Outputs saved to " + output_filename)
-
     else:
         logger.info("Training on {}".format(socket.gethostname()))
         args.logdir = os.path.join(

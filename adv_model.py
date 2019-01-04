@@ -45,6 +45,7 @@ class PGDAttacker():
         We set its step size α = 1, except for 10-iteration attacks where α is set to α/10= 1.6
         """
         self.num_iter = num_iter
+        # rescale the attack epsilon and attack step size
         self.epsilon = epsilon * IMAGE_SCALE
         self.step_size = step_size * IMAGE_SCALE
         self.prob_start_from_clean = prob_start_from_clean
@@ -67,12 +68,17 @@ class PGDAttacker():
             # Note we don't add any summaries here when creating losses, because
             # summaries don't work in conditionals
             losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits, labels=target_label)
+                logits=logits, labels=target_label)  # we want to minimize it in targeted attack
             g, = tf.gradients(losses, adv)
+            """
+            Feature Denoising, Sec 5:
+            We use the Projected Gradient Descent (PGD)
+            (implemented at https://github.com/MadryLab/cifar10_challenge )
+            as the white-box attacker for adversarial training
+            """
             adv = tf.clip_by_value(adv - tf.sign(g) * self.step_size, lower_bound, upper_bound)
             return adv
 
-        # rescale the attack epsilon and attack step size
         """
         Feature Denoising, Sec 6:
         Adversarial perturbation is considered under L∞ norm (i.e., maximum difference for each pixel).
@@ -129,6 +135,8 @@ class AdvImageNetModel(ImageNetModel):
         loss = ImageNetModel.compute_loss_and_error(
             logits, label, label_smoothing=self.label_smoothing)
         AdvImageNetModel.compute_attack_success(logits, target_label)
+        if not ctx.is_training:
+            return
 
         wd_loss = regularize_cost(self.weight_decay_pattern,
                                   tf.contrib.layers.l2_regularizer(self.weight_decay),
@@ -163,7 +171,7 @@ class AdvImageNetModel(ImageNetModel):
         with tf.name_scope('image_preprocess'):
             if image.dtype.base_dtype != tf.float32:
                 image = tf.cast(image, tf.float32)
-            # For the purpose of adversarial training, normalize images to [-1,1]
+            # For the purpose of adversarial training, normalize images to [-1, 1]
             image = image * IMAGE_SCALE - 1.0
             return image
 
