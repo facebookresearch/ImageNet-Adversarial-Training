@@ -142,8 +142,8 @@ On a cluster with InfiniBand, it may look like this:
         --batch 32 --attack-iter [INTEGER] --attack-epsilon 16.0 [--architecture-flags]
 ```
 
-If your cluster is managed by SLURM, we provide some sample slurm job scripts
-(see `train.slurm.sh` and `eval.slurm.sh`) for your reference.
+If your cluster is managed by slurm , we provide some sample [slurm job scripts](slurm/)
+for your reference.
 
 The training code will also perform distributed evaluation of white-box robustness.
 

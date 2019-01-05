@@ -219,7 +219,7 @@ if __name__ == '__main__':
         logger.info("Outputs saved to " + output_filename)
     else:
         logger.info("Training on {}".format(socket.gethostname()))
-        args.logdir = os.path.join(
+        logdir = os.path.join(
             'train_log',
             'PGD-{}{}-Batch{}-{}GPUs-iter{}-epsilon{}-step{}-{}'.format(
                 args.arch, args.depth, args.batch, hvd.size(),
@@ -227,7 +227,7 @@ if __name__ == '__main__':
                 args.logdir))
 
         if hvd.rank() == 0:
-            logger.set_logger_dir(args.logdir, 'd')
+            logger.set_logger_dir(logdir, 'd')
         logger.info("Rank={}, Local Rank={}, Size={}".format(hvd.rank(), hvd.local_rank(), hvd.size()))
 
         do_train(model)
