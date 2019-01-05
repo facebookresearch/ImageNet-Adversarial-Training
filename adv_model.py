@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# File: imagenet_utils.py
-
-
 import tensorflow as tf
 
 from tensorpack.models import regularize_cost, BatchNorm
@@ -94,7 +89,8 @@ class PGDAttacker():
         random points within the allowed .
         """
         init_start = tf.random_uniform(tf.shape(image_clean), minval=-self.epsilon, maxval=self.epsilon)
-        start_from_noise_index = tf.cast(tf.greater(tf.random_uniform(tf.shape(label)), self.prob_start_from_clean), tf.float32)
+        start_from_noise_index = tf.cast(tf.greater(
+            tf.random_uniform(tf.shape(label)), self.prob_start_from_clean), tf.float32)
         start_adv = image_clean + tf.reshape(start_from_noise_index, [tf.shape(label)[0], 1, 1, 1]) * init_start
 
         with tf.name_scope('attack_loop'):
@@ -119,6 +115,9 @@ class AdvImageNetModel(ImageNetModel):
         self.attacker = attacker
 
     def build_graph(self, image, label):
+        """
+        The default tower function.
+        """
         image = self.image_preprocess(image)
         assert self.data_format == 'NCHW'
         image = tf.transpose(image, [0, 3, 1, 2])
@@ -184,4 +183,3 @@ class AdvImageNetModel(ImageNetModel):
         equal_target = tf.equal(pred, target_label)
         success = tf.cast(equal_target, tf.float32, name='attack_success')
         add_moving_summary(tf.reduce_mean(success, name='attack_success_rate'))
-

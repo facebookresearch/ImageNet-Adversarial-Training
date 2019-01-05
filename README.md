@@ -18,7 +18,7 @@ This is a scenario where no previous models have achieved more than 1% accuracy.
 
 On black-box adversarial defense, our method won the __champion of defense track__ in the
 [CAAD (Competition of Adversarial Attacks and Defenses) 2018](https://en.caad.geekpwn.org).
-It also greatly outperform the CAAD 2017 defense track winner when evaluated
+It also greatly outperforms the CAAD 2017 defense track winner when evaluated
 against CAAD 2017 black-box attackers.
 
 This repo contains:

@@ -1,6 +1,3 @@
-#-*- coding: utf-8 -*-
-#File:
-
 from adv_model import AdvImageNetModel
 from resnet_model import (
     resnet_group, resnet_bottleneck, resnet_backbone)

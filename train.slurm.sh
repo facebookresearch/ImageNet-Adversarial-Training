@@ -24,7 +24,7 @@ srun --output=logs/data-%J.%N.log \
 		 --error=logs/data-%J.%N.err \
 		 --gres=gpu:0 --cpus-per-task=60 --mincpus 60 \
 	--ntasks=$SLURM_NNODES --ntasks-per-node=1 \
-	python ./serve-data.py --data $DATA_PATH --batch $BATCH &
+	python ./third_party/serve-data.py --data $DATA_PATH --batch $BATCH &
 DATA_PID=$!
 
 # launch training

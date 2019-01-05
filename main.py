@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# File: imagenet-resnet-horovod.py
 
 import argparse
 import glob
@@ -75,8 +74,8 @@ def do_train(model):
         ModelSaver(max_to_keep=10),
         EstimatedTimeLeft(),
         ScheduledHyperParamSetter(
-           'learning_rate', [(0, BASE_LR), (35, BASE_LR * 1e-1), (70, BASE_LR * 1e-2),
-                             (95, BASE_LR * 1e-3)])
+            'learning_rate', [(0, BASE_LR), (35, BASE_LR * 1e-1), (70, BASE_LR * 1e-2),
+                              (95, BASE_LR * 1e-3)])
     ]
     """
     Feature Denoising, Sec 5:
@@ -190,7 +189,7 @@ if __name__ == '__main__':
                 monitors=[ScalarPrinter()] if hvd.rank() == 0 else [],
                 session_init=sessinit,
                 steps_per_epoch=0, max_epoch=1)
-    if args.eval_directory:
+    elif args.eval_directory:
         sessinit = get_model_loader(args.load)
         assert hvd.size() == 1
         files = glob.glob(os.path.join(args.eval_directory, '*.*'))

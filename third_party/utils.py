@@ -1,6 +1,3 @@
-#-*- coding: utf-8 -*-
-#File:
-
 import numpy as np
 import horovod.tensorflow as hvd
 import tensorflow as tf

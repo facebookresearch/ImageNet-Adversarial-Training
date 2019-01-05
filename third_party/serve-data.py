@@ -11,7 +11,7 @@ from tensorpack.dataflow import (
     send_dataflow_zmq, MapData, TestDataSpeed, FakeData, dataset,
     AugmentImageComponent, BatchData, PrefetchDataZMQ)
 from tensorpack.utils import logger
-from third_party.imagenet_utils import fbresnet_augmentor
+from imagenet_utils import fbresnet_augmentor
 
 from zmq_ops import dump_arrays
 
@@ -20,7 +20,8 @@ def get_data(batch, augmentors):
     """
     Sec 3, Remark 4:
     Use a single random shuffling of the training data (per epoch) that is divided amongst all k workers.
-    Here we do not follow the paper because it does not seem to make a difference.
+
+    NOTE: Here we do not follow the paper, but it makes little differences.
     """
     ds = dataset.ILSVRC12(args.data, 'train', shuffle=True)
     ds = AugmentImageComponent(ds, augmentors, copy=False)

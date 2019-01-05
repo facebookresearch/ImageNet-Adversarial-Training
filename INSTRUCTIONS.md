@@ -126,7 +126,7 @@ You can use our code for standard ImageNet training as well (with `--attack-iter
 
 To train, first start one data serving process __on each machine__:
 ```
-$ ./serve-data.py --data /path/to/imagenet/ --batch 32
+$ ./third_party/serve-data.py --data /path/to/imagenet/ --batch 32
 ```
 
 Then, launch a distributed job with MPI. You may need to consult your cluster

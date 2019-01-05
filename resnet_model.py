@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# File: resnet_model.py
-
 import tensorflow as tf
 from tensorpack.tfutils.argscope import argscope
 from tensorpack.models import (
@@ -96,8 +92,10 @@ def non_local_op(l, embed, softmax):
     """
     n_in, H, W = l.shape.as_list()[1:]
     if embed:
-        theta = Conv2D('embedding_theta', l, n_in / 2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-        phi = Conv2D('embedding_phi', l, n_in / 2, 1, strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        theta = Conv2D('embedding_theta', l, n_in / 2, 1,
+                       strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+        phi = Conv2D('embedding_phi', l, n_in / 2, 1,
+                     strides=1, kernel_initializer=tf.random_normal_initializer(stddev=0.01))
         g = l
     else:
         theta, phi, g = l, l, l
