@@ -2,7 +2,7 @@
 #SBATCH --output=logs/job-%j.%N.out
 #SBATCH --error=logs/job-%j.%N.err
 #SBATCH --ntasks-per-node=8  # 8 tasks per node
-#SBATCH --gres=gpu:volta:8		 # 8 GPUs per node
+#SBATCH --gres=gpu:8		 # 8 GPUs per node
 #SBATCH --cpus-per-task=10   # 80/8 cpus per task
 #SBATCH --mem=200G	 # ask for 200G
 

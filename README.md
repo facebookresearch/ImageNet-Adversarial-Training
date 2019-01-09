@@ -24,7 +24,7 @@ against CAAD 2017 black-box attackers.
 This repo contains:
 
 1. Our trained models together with the evaluation script to verify their robustness.
-   We welcome attackers to attack our models and defenders to compare with our models.
+   We welcome attackers to attack our released models and defenders to compare with our released models.
 
 2. Our distributed adversarial training code on ImageNet.
 

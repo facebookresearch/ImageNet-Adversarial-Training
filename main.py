@@ -101,8 +101,8 @@ def do_train(model):
             cb = create_eval_callback(
                 name,
                 model.get_inference_func(attacker),
-                # always eval in the last 3 epochs no matter what
-                lambda epoch_num: condition(epoch_num) or epoch_num > max_epoch - 3)
+                # always eval in the last 2 epochs no matter what
+                lambda epoch_num: condition(epoch_num) or epoch_num > max_epoch - 2)
             callbacks.append(cb)
 
         add_eval_callback('eval-clean', NoOpAttacker(), lambda e: True)
@@ -123,36 +123,38 @@ def do_train(model):
         callbacks=callbacks,
         steps_per_epoch=steps_per_epoch,
         session_init=get_model_loader(args.load) if args.load is not None else None,
-        max_epoch=max_epoch)
+        max_epoch=max_epoch,
+        starting_epoch=args.starting_epoch
+        )
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--load', help='load model')
+    parser.add_argument('--load', help='Path to a model to load for evaluation or resuming training.')
+    parser.add_argument('--starting-epoch', help='The epoch to start with. Useful when resuming training.', type=int, default=1)
     parser.add_argument('--logdir', help='Directory suffix for models and training stats.')
-    parser.add_argument('--eval', action='store_true', help='run evaluation with --load instead of training.')
-    parser.add_argument('--eval-directory', help='path to a directory of images to classify')
+    parser.add_argument('--eval', action='store_true', help='Evaluate a model instead of training.')
+    parser.add_argument('--eval-directory', help='Path to a directory of images to classify.')
 
     parser.add_argument('--data', help='ILSVRC dataset dir')
-    parser.add_argument('--fake', help='use fakedata to test or benchmark this model', action='store_true')
-    parser.add_argument('--no-zmq-ops', help='use pure python to send/receive data',
+    parser.add_argument('--fake', help='Use fakedata to test or benchmark this model', action='store_true')
+    parser.add_argument('--no-zmq-ops', help='Use pure python to send/receive data',
                         action='store_true')
-    parser.add_argument('--batch', help='per-GPU batch size', default=32, type=int)
+    parser.add_argument('--batch', help='Per-GPU batch size', default=32, type=int)
 
     # attacker flags:
-    parser.add_argument('--attack-iter', help='adversarial attack iteration',
+    parser.add_argument('--attack-iter', help='Adversarial attack iteration',
                         type=int, default=30)
-    parser.add_argument('--attack-epsilon', help='adversarial attack maximal perturbation',
+    parser.add_argument('--attack-epsilon', help='Adversarial attack maximal perturbation',
                         type=float, default=16.0)
-    parser.add_argument('--attack-step-size', help='adversarial attack step size',
+    parser.add_argument('--attack-step-size', help='Adversarial attack step size',
                         type=float, default=1.0)
 
     # architecture flags:
-    parser.add_argument('-d', '--depth', help='resnet depth',
+    parser.add_argument('-d', '--depth', help='ResNet depth',
                         type=int, default=50, choices=[50, 101, 152])
-    parser.add_argument('--arch', help='architectures defined in nets.py',
+    parser.add_argument('--arch', help='Name of architectures defined in nets.py',
                         default='ResNet')
-
     args = parser.parse_args()
 
     # Define model
@@ -164,8 +166,7 @@ if __name__ == '__main__':
     else:
         attacker = PGDAttacker(
             args.attack_iter, args.attack_epsilon, args.attack_step_size,
-            prob_start_from_clean=0.2 if not args.eval else 1.0)
-        # TODO whether to use 1.0 for eval or 0.0 ?
+            prob_start_from_clean=0.2 if not args.eval else 0.0)
     model.set_attacker(attacker)
 
     os.system("nvidia-smi")
@@ -222,10 +223,10 @@ if __name__ == '__main__':
         logger.info("Training on {}".format(socket.gethostname()))
         logdir = os.path.join(
             'train_log',
-            'PGD-{}{}-Batch{}-{}GPUs-iter{}-epsilon{}-step{}-{}'.format(
+            'PGD-{}{}-Batch{}-{}GPUs-iter{}-epsilon{}-step{}{}'.format(
                 args.arch, args.depth, args.batch, hvd.size(),
                 args.attack_iter, args.attack_epsilon, args.attack_step_size,
-                args.logdir))
+                '-' + args.logdir if args.logdir else ''))
 
         if hvd.rank() == 0:
             logger.set_logger_dir(logdir, 'd')
