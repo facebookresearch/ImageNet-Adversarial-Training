@@ -165,6 +165,7 @@ if __name__ == '__main__':
         attacker = PGDAttacker(
             args.attack_iter, args.attack_epsilon, args.attack_step_size,
             prob_start_from_clean=0.2 if not args.eval else 1.0)
+        # TODO whether to use 1.0 for eval or 0.0 ?
     model.set_attacker(attacker)
 
     os.system("nvidia-smi")
