@@ -4,6 +4,7 @@
 import argparse
 import glob
 import os
+import sys
 import socket
 import numpy as np
 
@@ -179,6 +180,7 @@ if __name__ == '__main__':
             ds = get_val_dataflow(args.data, args.batch)
             eval_on_ILSVRC12(model, sessinit, ds)
         else:
+            logger.info("CMD: " + " ".join(sys.argv))
             cb = create_eval_callback(
                 "eval",
                 model.get_inference_func(attacker),
@@ -230,6 +232,7 @@ if __name__ == '__main__':
 
         if hvd.rank() == 0:
             logger.set_logger_dir(logdir, 'd')
+        logger.info("CMD: " + " ".join(sys.argv))
         logger.info("Rank={}, Local Rank={}, Size={}".format(hvd.rank(), hvd.local_rank(), hvd.size()))
 
         do_train(model)

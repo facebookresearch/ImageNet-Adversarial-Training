@@ -17,7 +17,7 @@
 <tr>
 <th align="left" rowspan=2>Model (expand for flags)</th>
 <th align="center">error rate</th>
-<th align="center" colspan=3>error &amp; attack success rate</th>
+<th align="center" colspan=3>error rate / attack success rate</th>
 </tr>
 <tr>
 <th align="center">clean images</th>
@@ -31,26 +31,26 @@
 <tbody>
 <tr>
 <td align="left"><details><summary>ResNet152 Baseline <a href="R152"> :arrow_down: </a> </summary> <code>--arch ResNet -d 152</code></details></td>
-<td align="center">8%</td>
-<td align="center">3%</td>
-<td align="center">3%</td>
-<td></td>
+<td align="center">37.7%</td>
+<td align="center">47.5%/5.5%</td>
+<td align="center">58.4%/31.0%</td>
+<td align="center">60.7%/36.1%</td>
 </tr>
 
 <tr>
 <td align="left"><details><summary>ResNet152 Denoise  <a href="R152Denoise"> :arrow_down: </a> </summary> <code>--arch ResNetDenoise -d 152</code></details></td>
-<td align="center">6%</td>
-<td align="center">4%</td>
-<td align="center">4%</td>
-<td></td>
+<td align="center">34.7%</td>
+<td align="center">44.1%/4.9%</td>
+<td align="center">54.6%/26.6%</td>
+<td align="center">56.9%/32.7%</td>
 </tr>
 
 <tr>
 <td align="left"><details><summary>ResNeXt101 DenoiseAll  <a href="X101DenoiseAll"> :arrow_down: </a> </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> </details></td>
-<td align="center">5%</td>
-<td align="center">7%</td>
-<td align="center">7%</td>
-<td></td>
+<td align="center">31.6%</td>
+<td align="center">44.0%/4.9%</td>
+<td align="center">55.6%/31.5%</td>
+<td align="center">59.6%/38.1%</td>
 </tr>
 </tbody>
 </table>
@@ -94,7 +94,8 @@ python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet 
 To reproduce our evaluation results,
 take "architecture flags" from the first column, and set the attack iteration.
 Iteration can be set to 0 to evaluate its clean image error rate.
-Note that the evaluation result may have a ±0.1 fluctuation due to the randomly-chosen target attack label.
+Note that the evaluation result may have a ±0.3 fluctuation due to the
+randomly-chosen target attack label and attack initialization.
 
 Using a K-step attacker makes the evaluation K-times slower.
 To speed up evaluation, run it under MPI with multi-GPU or multiple machines, e.g.:
@@ -122,6 +123,7 @@ You can use this to evaluate its black-box robustness.
 ## Train:
 
 Adversarial training takes a long time and we recommend doing it only when you have a lot of GPUs.
+Large models may require GPUs with 32GB memory to train.
 You can use our code for standard ImageNet training as well (with `--attack-iter 0`).
 
 To train, first start one data serving process __on each machine__:
