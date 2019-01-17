@@ -5,7 +5,9 @@ from tensorpack.tfutils.summary import add_moving_summary
 from tensorpack.tfutils import argscope
 from tensorpack.tfutils.tower import get_current_tower_context, TowerFuncWrapper
 from tensorpack.utils import logger
+from tensorpack.utils.argtools import log_once
 from tensorpack.tfutils.collection import freeze_collection
+from tensorpack.tfutils.varreplace import custom_getter_scope
 
 from third_party.imagenet_utils import ImageNetModel
 
@@ -25,6 +27,21 @@ class PGDAttacker():
     """
     A PGD white-box attacker with random target label.
     """
+
+    USE_FP16 = False
+    """
+    Use FP16 to run PGD iterations.
+    This has about 2~3x speedup for most types of models
+    if used together with XLA on Volta GPUs.
+    """
+
+    USE_XLA = False
+    """
+    Use XLA to optimize the graph of PGD iterations.
+    This requires CUDA>=9.2 and TF>=1.12.
+    """
+
+
     def __init__(self, num_iter, epsilon, step_size, prob_start_from_clean=0.0):
         """
         Args:
@@ -46,7 +63,7 @@ class PGDAttacker():
         self.prob_start_from_clean = prob_start_from_clean
 
     def _create_random_target(self, label):
-        """ Only support random target.
+        """
         Feature Denoising Sec 6:
         we consider targeted attacks when
         evaluating under the white-box settings, where the targeted
@@ -58,13 +75,47 @@ class PGDAttacker():
     def attack(self, image_clean, label, model_func):
         target_label = self._create_random_target(label)
 
+        def fp16_getter(getter, *args, **kwargs):
+            name = args[0] if len(args) else kwargs['name']
+            if not name.endswith('/W') and not name.endswith('/b'):
+                """
+                Following convention, convolution & fc are quantized.
+                BatchNorm (gamma & beta) are not quantized.
+                """
+                return getter(*args, **kwargs)
+            else:
+                if kwargs['dtype'] == tf.float16:
+                    kwargs['dtype'] = tf.float32
+                    ret = getter(*args, **kwargs)
+                    ret = tf.cast(ret, tf.float16)
+                    log_once("Variable {} casted to fp16 ...".format(name))
+                    return ret
+                else:
+                    return getter(*args, **kwargs)
+
         def one_step_attack(adv):
-            logits = model_func(adv)
+            if not self.USE_FP16:
+                logits = model_func(adv)
+            else:
+                adv16 = tf.cast(adv, tf.float16)
+                with custom_getter_scope(fp16_getter):
+                    logits = model_func(adv16)
+                    logits = tf.cast(logits, tf.float32)
             # Note we don't add any summaries here when creating losses, because
-            # summaries don't work in conditionals
+            # summaries don't work in conditionals.
             losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits, labels=target_label)  # we want to minimize it in targeted attack
-            g, = tf.gradients(losses, adv)
+                logits=logits, labels=target_label) # we want to minimize it in targeted attack
+            if not self.USE_FP16:
+                g, = tf.gradients(losses, adv)
+            else:
+                """
+                We perform loss scaling to prevent underflow:
+                https://docs.nvidia.com/deeplearning/sdk/mixed-precision-training/index.html
+                (We have not yet tried training without scaling)
+                """
+                g, = tf.gradients(losses * 128., adv)
+                g = g / 128.
+
             """
             Feature Denoising, Sec 5:
             We use the Projected Gradient Descent (PGD)
@@ -99,9 +150,15 @@ class PGDAttacker():
             start_from_noise_index = tf.reshape(start_from_noise_index, [tf.shape(label)[0], 1, 1, 1])
         start_adv = image_clean + start_from_noise_index * init_start
 
+
+        if self.USE_XLA:
+            assert tuple(map(int, tf.__version__.split('.')[:2])) >= (1, 12)
+            from tensorflow.contrib.compiler import xla
         with tf.name_scope('attack_loop'):
             adv_final = tf.while_loop(
-                lambda _: True, one_step_attack,
+                lambda _: True,
+                one_step_attack if not self.USE_XLA else \
+                    lambda adv: xla.compile(lambda: one_step_attack(adv))[0],
                 [start_adv],
                 back_prop=False,
                 maximum_iterations=self.num_iter,
@@ -111,11 +168,11 @@ class PGDAttacker():
 
 class AdvImageNetModel(ImageNetModel):
 
-    label_smoothing = 0.1
     """
     Feature Denoising, Sec 5:
     A label smoothing of 0.1 is used.
     """
+    label_smoothing = 0.1
 
     def set_attacker(self, attacker):
         self.attacker = attacker
@@ -130,7 +187,7 @@ class AdvImageNetModel(ImageNetModel):
         ctx = get_current_tower_context()
 
         with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
-            # BatchNorm always give you trouble
+            # BatchNorm always comes with trouble. We use the testing mode of it during attack.
             with freeze_collection([tf.GraphKeys.UPDATE_OPS]), argscope(BatchNorm, training=False):
                 image, target_label = self.attacker.attack(image, label, self.get_logits)
                 image = tf.stop_gradient(image, name='adv_training_sample')

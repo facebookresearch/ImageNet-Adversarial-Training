@@ -65,11 +65,16 @@ def do_train(model):
             data = QueueInput(dataflow)
         else:
             data = ZMQInput(zmq_addr, 30, bind=False)
-        data = StagingInput(data, nr_stage=1)
+        data = StagingInput(data)
 
         steps_per_epoch = int(np.round(1281167 / total_batch))
 
     BASE_LR = 0.1 * (total_batch // 256)
+    """
+    ImageNet in 1 Hour, Sec 2.1:
+    Linear Scaling Rule: When the minibatch size is
+    multiplied by k, multiply the learning rate by k.
+    """
     logger.info("Base LR: {}".format(BASE_LR))
     callbacks = [
         ModelSaver(max_to_keep=10),
@@ -98,6 +103,7 @@ def do_train(model):
         """
 
     if not args.fake:
+        # add distributed evaluation, for various attackers that we care.
         def add_eval_callback(name, attacker, condition):
             cb = create_eval_callback(
                 name,
@@ -125,8 +131,7 @@ def do_train(model):
         steps_per_epoch=steps_per_epoch,
         session_init=get_model_loader(args.load) if args.load is not None else None,
         max_epoch=max_epoch,
-        starting_epoch=args.starting_epoch
-        )
+        starting_epoch=args.starting_epoch)
 
 
 if __name__ == '__main__':
@@ -150,6 +155,9 @@ if __name__ == '__main__':
                         type=float, default=16.0)
     parser.add_argument('--attack-step-size', help='Adversarial attack step size',
                         type=float, default=1.0)
+    parser.add_argument('--use-fp16xla',
+                        help='Optimize PGD with fp16+XLA in training or evaluation. (Evaluation during training will still use FP32, for fair comparison)',
+                        action='store_true')
 
     # architecture flags:
     parser.add_argument('-d', '--depth', help='ResNet depth',
@@ -168,6 +176,9 @@ if __name__ == '__main__':
         attacker = PGDAttacker(
             args.attack_iter, args.attack_epsilon, args.attack_step_size,
             prob_start_from_clean=0.2 if not args.eval else 0.0)
+        if args.use_fp16xla:
+            attacker.USE_FP16 = True
+            attacker.USE_XLA = True
     model.set_attacker(attacker)
 
     os.system("nvidia-smi")
@@ -194,7 +205,6 @@ if __name__ == '__main__':
                 session_init=sessinit,
                 steps_per_epoch=0, max_epoch=1)
     elif args.eval_directory:
-        sessinit = get_model_loader(args.load)
         assert hvd.size() == 1
         files = glob.glob(os.path.join(args.eval_directory, '*.*'))
         ds = ImageFromFile(files, resize=224)
@@ -204,13 +214,13 @@ if __name__ == '__main__':
 
         pred_config = PredictConfig(
             model=model,
-            session_init=sessinit,
+            session_init=get_model_loader(args.load),
             input_names=['input'],
             output_names=['linear/output']  # the logits
         )
         predictor = SimpleDatasetPredictor(pred_config, ds)
 
-        logger.info("Inference on {} images in {}".format(len(files), args.eval_directory))
+        logger.info("Running inference on {} images in {}".format(len(files), args.eval_directory))
         results = []
         for logits, in predictor.get_result():
             predictions = list(np.argmax(logits, axis=1))
@@ -231,6 +241,7 @@ if __name__ == '__main__':
                 '-' + args.logdir if args.logdir else ''))
 
         if hvd.rank() == 0:
+            # old log directory will be automatically removed.
             logger.set_logger_dir(logdir, 'd')
         logger.info("CMD: " + " ".join(sys.argv))
         logger.info("Rank={}, Local Rank={}, Size={}".format(hvd.rank(), hvd.local_rank(), hvd.size()))

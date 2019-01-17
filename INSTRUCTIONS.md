@@ -81,6 +81,8 @@ Note:
 
 3. `ResNeXt101 DenoiseAll` is the submission that won the champion of
    black-box defense track in [Competition on Adversarial Attacks and Defenses 2018](https://en.caad.geekpwn.org/).
+	 This model was trained with different training settings
+	 therefore its results are not directly comparable with other models.
 
 
 ## Evaluate White-Box Robustness:
@@ -158,3 +160,6 @@ Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V
 Note that the model actually does not add much computation to the baseline,
 but it lacks efficient GPU implementation for the softmax version of non-local operation.
 The dot-product version, on the otherhand, is much faster.
+
+If you use CUDA>=9.2, TF>=1.12 on Volta GPUs, the flag `--use-fp16xla` will enable XLA-optimized
+FP16 PGD attack, which reduced training time about 2x, with a slight drop of accuracy.
