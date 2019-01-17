@@ -92,7 +92,7 @@ python main.py --eval --load /path/to/model_checkpoint --data /path/to/imagenet 
 ```
 
 To reproduce our evaluation results,
-take "architecture flags" from the first column, and set the attack iteration.
+take "architecture flags" from the first column in the model zoo, and set the attack iteration.
 Iteration can be set to 0 to evaluate its clean image error rate.
 Note that the evaluation result may have a ±0.3 fluctuation due to the
 randomly-chosen target attack label and attack initialization.
@@ -157,3 +157,4 @@ the `Res152 Baseline` model takes about 52 hours to finish training on 128 V100s
 Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V100s.
 Note that the model actually does not add much computation to the baseline,
 but it lacks efficient GPU implementation for the softmax version of non-local operation.
+The dot-product version, on the otherhand, is much faster.
