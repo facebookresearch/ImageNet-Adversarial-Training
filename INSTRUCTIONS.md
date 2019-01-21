@@ -161,5 +161,5 @@ Note that the model actually does not add much computation to the baseline,
 but it lacks efficient GPU implementation for the softmax version of non-local operation.
 The dot-product version, on the otherhand, is much faster.
 
-If you use CUDA>=9.2, TF>=1.12 on Volta GPUs, the flag `--use-fp16xla` will enable XLA-optimized
-FP16 PGD attack, which reduced training time about 2x, with a slight drop of accuracy.
+If you use CUDA≥9.2, TF≥1.12 on Volta GPUs, the flag `--use-fp16xla` will enable XLA-optimized
+FP16 PGD attack, which reduces training time about 2x, with a slight drop of accuracy.
