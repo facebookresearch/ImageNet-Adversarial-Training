@@ -8,7 +8,7 @@
   + horovod has many [installation options](https://github.com/uber/horovod/blob/master/docs/gpus.md) to optimize its multi-machine/multi-GPU performance.
     You might want to follow them.
 + TensorFlow [zmq_ops](https://github.com/tensorpack/zmq_ops) (needed only for training)
-+ ImageNet data in its [standard directory structure](https://tensorpack.readthedocs.io/modules/dataflow.dataset.html#tensorpack.dataflow.dataset.ILSVRC12)
++ ImageNet data in its standard directory structure.
 
 
 ## Model Zoo:
@@ -16,8 +16,8 @@
 <thead>
 <tr>
 <th align="left" rowspan=2>Model (expand for flags)</th>
-<th align="center">error rate</th>
-<th align="center" colspan=3>error rate / attack success rate</th>
+<th align="center">error rate (%)</th>
+<th align="center" colspan=3>error rate / attack success rate (%)</th>
 </tr>
 <tr>
 <th align="center">clean images</th>
@@ -31,26 +31,26 @@
 <tbody>
 <tr>
 <td align="left"><details><summary>ResNet152 Baseline <a href="R152"> :arrow_down: </a> </summary> <code>--arch ResNet -d 152</code></details></td>
-<td align="center">37.7%</td>
-<td align="center">47.5%/5.5%</td>
-<td align="center">58.4%/31.0%</td>
-<td align="center">60.7%/36.1%</td>
+<td align="center">37.7</td>
+<td align="center">47.5/5.5</td>
+<td align="center">58.4/31.0</td>
+<td align="center">60.7/36.1</td>
 </tr>
 
 <tr>
 <td align="left"><details><summary>ResNet152 Denoise  <a href="R152Denoise"> :arrow_down: </a> </summary> <code>--arch ResNetDenoise -d 152</code></details></td>
-<td align="center">34.7%</td>
-<td align="center">44.1%/4.9%</td>
-<td align="center">54.6%/26.6%</td>
-<td align="center">56.9%/32.7%</td>
+<td align="center">34.7</td>
+<td align="center">44.1/4.9</td>
+<td align="center">54.6/26.6</td>
+<td align="center">56.9/32.7</td>
 </tr>
 
 <tr>
 <td align="left"><details><summary>ResNeXt101 DenoiseAll  <a href="X101DenoiseAll"> :arrow_down: </a> </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> </details></td>
-<td align="center">31.6%</td>
-<td align="center">44.0%/4.9%</td>
-<td align="center">55.6%/31.5%</td>
-<td align="center">59.6%/38.1%</td>
+<td align="center">31.6</td>
+<td align="center">44.0/4.9</td>
+<td align="center">55.6/31.5</td>
+<td align="center">59.6/38.1</td>
 </tr>
 </tbody>
 </table>
@@ -162,4 +162,4 @@ but it lacks efficient GPU implementation for the softmax version of non-local o
 The dot-product version, on the otherhand, is much faster.
 
 If you use CUDA≥9.2, TF≥1.12 on Volta GPUs, the flag `--use-fp16xla` will enable XLA-optimized
-FP16 PGD attack, which reduces training time about 2x, with a slight drop of accuracy.
+FP16 PGD attack, which reduces training time about 2x, with a drop of about 3% robustness.
