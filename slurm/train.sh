@@ -1,15 +1,15 @@
 #!/bin/bash -e
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 #SBATCH --output=logs/job-%j.%N.out
 #SBATCH --error=logs/job-%j.%N.err
 #SBATCH --ntasks-per-node=8  # 8 tasks per node
 #SBATCH --gres=gpu:8		 # 8 GPUs per node
 #SBATCH --cpus-per-task=10   # 80/8 cpus per task
 #SBATCH --mem=200G
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 
 # To run on 4 nodes x 8 GPUs: use "mkdir -p logs && sbatch --nodes=4 slurm.script"
 

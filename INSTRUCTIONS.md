@@ -64,7 +64,7 @@ Note:
    1. targeted attack with random uniform target label
    2. maximum perturbation per pixel is 16.
 
-   We do not perform untargeted attack, nor do we let the attacker choose the target label,
+   We do not consider untargeted attack, nor do we let the attacker choose the target label,
    because we believe such tasks are not realistic on the 1000 ImageNet classes.
 
 2. For each (attacker, model) pair, we provide both the __error rate__ of our model,
@@ -159,7 +159,7 @@ the `Res152 Baseline` model takes about 52 hours to finish training on 128 V100s
 Under the same setting, the `Res152 Denoise` model takes about 90 hours on 128 V100s.
 Note that the model actually does not add much computation to the baseline,
 but it lacks efficient GPU implementation for the softmax version of non-local operation.
-The dot-product version, on the otherhand, is much faster.
+The dot-product version, on the other hand, is much faster.
 
 If you use CUDA≥9.2, TF≥1.12 on Volta GPUs, the flag `--use-fp16xla` will enable XLA-optimized
 FP16 PGD attack, which reduces training time about 2x, with a drop of about 3% robustness.
