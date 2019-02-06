@@ -8,7 +8,7 @@
   + horovod has many [installation options](https://github.com/uber/horovod/blob/master/docs/gpus.md) to optimize its multi-machine/multi-GPU performance.
     You might want to follow them.
 + TensorFlow [zmq_ops](https://github.com/tensorpack/zmq_ops) (needed only for training)
-+ ImageNet data in its standard directory structure.
++ ImageNet data in [its standard directory structure](https://tensorpack.readthedocs.io/modules/dataflow.dataset.html#tensorpack.dataflow.dataset.ILSVRC12).
 
 
 ## Model Zoo:
@@ -65,16 +65,16 @@ Note:
    2. maximum perturbation per pixel is 16.
 
    We do not consider untargeted attack, nor do we let the attacker choose the target label,
-   because we believe such tasks are not realistic on the 1000 ImageNet classes.
+   because we think such tasks may are not realistic on the 1000 ImageNet classes.
 
 2. For each (attacker, model) pair, we provide both the __error rate__ of our model,
    and the __attack success rate__ of the attacker, on ImageNet validation set.
    A targeted attack is considered successful if the image is classified to the target label.
 
-   If you develop a new robust model, please compare its error rate with our models.
+   __For Defense__, if you develop a new robust model, please compare its error rate with our models.
    Attack success rate is not a reasonable metric, because then the model can cheat by making random predictions.
 
-   If you develop a new attack method against our models,
+   __For Target Attack__, if you develop a new attack method against our models,
    please compare its attack success rate with PGD.
    Error rate is not a reasonable metric, because then the method can cheat by becoming
    untargeted attacks.
