@@ -32,4 +32,6 @@ Please see [INSTRUCTIONS.md](INSTRUCTIONS.md) for the usage.
 
 ## License
 
+This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for details.
+
 ## Citation
