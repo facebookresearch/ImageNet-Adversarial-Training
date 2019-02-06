@@ -146,14 +146,8 @@ class PGDAttacker():
         random points within the allowed .
         """
         init_start = tf.random_uniform(tf.shape(image_clean), minval=-self.epsilon, maxval=self.epsilon)
-        if True:
-            # Make a per-batch decision, instead of per-image.
-            # The latter sligthly underperforms, possibly due to BatchNorm.
-            start_from_noise_index = tf.cast(tf.greater(tf.random_uniform(shape=[]), self.prob_start_from_clean), tf.float32)
-        else:
-            start_from_noise_index = tf.cast(tf.greater(
-                tf.random_uniform(tf.shape(label)), self.prob_start_from_clean), tf.float32)
-            start_from_noise_index = tf.reshape(start_from_noise_index, [tf.shape(label)[0], 1, 1, 1])
+
+        start_from_noise_index = tf.cast(tf.greater(tf.random_uniform(shape=[]), self.prob_start_from_clean), tf.float32)
         start_adv = image_clean + start_from_noise_index * init_start
 
 
