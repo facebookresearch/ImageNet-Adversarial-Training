@@ -61,7 +61,7 @@ Note:
 
 1. As mentioned in the paper, our attack scenario is:
 
-   1. targeted attack with random uniform target label
+   1. targeted PGD attack with random uniform target label
    2. maximum perturbation per pixel is 16.
 
    We do not consider untargeted attack, nor do we let the attacker choose the target label,
