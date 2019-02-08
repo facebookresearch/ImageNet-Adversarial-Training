@@ -15,7 +15,7 @@
 <table>
 <thead>
 <tr>
-<th align="left" rowspan=2>Model (expand for flags)</th>
+<th align="left" rowspan=2>Model (click for details)</th>
 <th align="center">error rate (%)</th>
 <th align="center" colspan=3>error rate / attack success rate (%)</th>
 </tr>
@@ -30,7 +30,8 @@
 
 <tbody>
 <tr>
-<td align="left"><details><summary>ResNet152 Baseline <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0/R152.npz"> :arrow_down: </a> </summary> <code>--arch ResNet -d 152</code></details></td>
+<td align="left"><details><summary>ResNet152 Baseline </summary> <code>--arch ResNet -d 152</code> 
+<a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0/R152.npz"> :arrow_down: </a>   </details></td>
 <td align="center">37.7</td>
 <td align="center">47.5/5.5</td>
 <td align="center">58.3/31.0</td>
@@ -38,7 +39,8 @@
 </tr>
 
 <tr>
-<td align="left"><details><summary>ResNet152 Denoise  <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.1/R152-Denoise.npz"> :arrow_down: </a> </summary> <code>--arch ResNetDenoise -d 152</code></details></td>
+<td align="left"><details><summary>ResNet152 Denoise  </summary> <code>--arch ResNetDenoise -d 152</code> 
+<a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.1/R152-Denoise.npz"> :arrow_down: </a> </details></td>
 <td align="center">34.7</td>
 <td align="center">44.3/4.9</td>
 <td align="center">54.5/26.6</td>
@@ -46,7 +48,9 @@
 </tr>
 
 <tr>
-<td align="left"><details><summary>ResNeXt101 DenoiseAll  <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.2/X101-DenoiseAll.npz"> :arrow_down: </a> </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> </details></td>
+<td align="left"><details><summary>ResNeXt101 DenoiseAll   </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> 
+<a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.2/X101-DenoiseAll.npz"> :arrow_down: </a>
+</details></td>
 <td align="center">31.6</td>
 <td align="center">44.0/4.9</td>
 <td align="center">55.6/31.5</td>
