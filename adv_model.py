@@ -59,7 +59,7 @@ class PGDAttacker():
         step_size = max(step_size, epsilon / num_iter)
         """
         Feature Denoising, Sec 6.1:
-        We set its step size α = 1, except for 10-iteration attacks where α is set to α/10= 1.6
+        We set its step size α = 1, except for 10-iteration attacks where α is set to ε/10=1.6
         """
         self.num_iter = num_iter
         # rescale the attack epsilon and attack step size
