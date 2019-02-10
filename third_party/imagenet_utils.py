@@ -26,7 +26,7 @@ def fbresnet_augmentor(isTrain):
     """
     if isTrain:
         augmentors = [
-            imgaug.GoogleNetRandomCropAndResize(interp=c2.INTER_CUBIC),
+            imgaug.GoogleNetRandomCropAndResize(interp=cv2.INTER_CUBIC),
             # It's OK to remove the following augs if your CPU is not fast enough.
             # Removing brightness/contrast/saturation does not have a significant effect on accuracy.
             # Removing lighting leads to a tiny drop in accuracy.

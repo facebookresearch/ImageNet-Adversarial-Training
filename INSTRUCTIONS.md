@@ -2,8 +2,8 @@
 ## Dependencies:
 
 + TensorFlow ≥ 1.6 with GPU support
-+ OpenCV ≥ 3
 + Tensorpack ≥ 0.9.1
++ OpenCV ≥ 3
 + horovod ≥ 0.15 with NCCL support
   + horovod has many [installation options](https://github.com/uber/horovod/blob/master/docs/gpus.md) to optimize its multi-machine/multi-GPU performance.
     You might want to follow them.
@@ -30,7 +30,7 @@
 
 <tbody>
 <tr>
-<td align="left"><details><summary>ResNet152 Baseline </summary> <code>--arch ResNet -d 152</code> 
+<td align="left"><details><summary>ResNet152 Baseline </summary> <code>--arch ResNet -d 152</code>
 <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0/R152.npz"> :arrow_down: </a>   </details></td>
 <td align="center">37.7</td>
 <td align="center">47.5/5.5</td>
@@ -39,7 +39,7 @@
 </tr>
 
 <tr>
-<td align="left"><details><summary>ResNet152 Denoise  </summary> <code>--arch ResNetDenoise -d 152</code> 
+<td align="left"><details><summary>ResNet152 Denoise  </summary> <code>--arch ResNetDenoise -d 152</code>
 <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.1/R152-Denoise.npz"> :arrow_down: </a> </details></td>
 <td align="center">34.7</td>
 <td align="center">44.3/4.9</td>
@@ -48,7 +48,7 @@
 </tr>
 
 <tr>
-<td align="left"><details><summary>ResNeXt101 DenoiseAll   </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code> 
+<td align="left"><details><summary>ResNeXt101 DenoiseAll   </summary><code>--arch ResNeXtDenoiseAll</code> <br> <code>-d 101</code>
 <a href="https://github.com/facebookresearch/ImageNet-Adversarial-Training/releases/download/v0.2/X101-DenoiseAll.npz"> :arrow_down: </a>
 </details></td>
 <td align="center">31.6</td>

@@ -124,7 +124,7 @@ def do_train(model):
         add_eval_callback('eval-50step', PGDAttacker(50, args.attack_epsilon, args.attack_step_size),
                           lambda e: e % 20 == 0)
         add_eval_callback('eval-100step', PGDAttacker(100, args.attack_epsilon, args.attack_step_size),
-                          lambda e: e % 10 == 0)
+                          lambda e: e % 10 == 0 or e > max_epoch - 5)
         for k in [20, 30, 40, 60, 70, 80, 90]:
             add_eval_callback('eval-{}step'.format(k),
                               PGDAttacker(k, args.attack_epsilon, args.attack_step_size),
