@@ -13,7 +13,7 @@ By combining large-scale adversarial training and feature-denoising layers,
 we developed ImageNet classifiers with strong adversarial robustness.
 
 Trained on __128 GPUs__, our ImageNet classifier has 42.6% accuracy against an extremely strong
-__2000-steps white-box__ PGD attacker.
+__2000-steps white-box__ PGD targeted attack.
 This is a scenario where no previous models have achieved more than 1% accuracy.
 
 On black-box adversarial defense, our method won the __champion of defense track__ in the
