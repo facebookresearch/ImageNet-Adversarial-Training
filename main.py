@@ -8,11 +8,12 @@
 
 
 import argparse
+import cv2
 import glob
-import os
-import sys
-import socket
 import numpy as np
+import os
+import socket
+import sys
 
 import horovod.tensorflow as hvd
 
@@ -146,8 +147,11 @@ if __name__ == '__main__':
     parser.add_argument('--starting-epoch', help='The epoch to start with. Useful when resuming training.',
                         type=int, default=1)
     parser.add_argument('--logdir', help='Directory suffix for models and training stats.')
-    parser.add_argument('--eval', action='store_true', help='Evaluate a model instead of training.')
+    parser.add_argument('--eval', action='store_true', help='Evaluate a model on ImageNet instead of training.')
+
+    # run on a directory of images:
     parser.add_argument('--eval-directory', help='Path to a directory of images to classify.')
+    parser.add_argument('--prediction-file', help='Path to a txt file to write predictions.', default='predictions.txt')
 
     parser.add_argument('--data', help='ILSVRC dataset dir')
     parser.add_argument('--fake', help='Use fakedata to test or benchmark this model', action='store_true')
@@ -215,10 +219,13 @@ if __name__ == '__main__':
     elif args.eval_directory:
         assert hvd.size() == 1
         files = glob.glob(os.path.join(args.eval_directory, '*.*'))
-        ds = ImageFromFile(files, resize=224)
-        ds = BatchData(ds, 32, remainder=True)
-        ds = MapData(ds, lambda dp: [dp[0][:, :, :, ::-1]])
-        # Our model expects BGR images instead of RGB
+        ds = ImageFromFile(files)
+        # Our model expects BGR images instead of RGB.
+        # Also do a naive resize to 224.
+        ds = MapData(
+            ds,
+            lambda dp: [cv2.resize(dp[0][:, :, ::-1], (224, 224), interpolation=cv2.INTER_CUBIC)])
+        ds = BatchData(ds, 20, remainder=True)
 
         pred_config = PredictConfig(
             model=model,
@@ -234,11 +241,10 @@ if __name__ == '__main__':
             predictions = list(np.argmax(logits, axis=1))
             results.extend(predictions)
         assert len(results) == len(files)
-        output_filename = "predictions.txt"
-        with open(output_filename, "w") as f:
+        with open(args.prediction_file, "w") as f:
             for filename, label in zip(files, results):
-                f.write("{}\t{}\n".format(filename, label))
-        logger.info("Outputs saved to " + output_filename)
+                f.write("{},{}\n".format(filename, label))
+        logger.info("Outputs saved to " + args.prediction_file)
     else:
         logger.info("Training on {}".format(socket.gethostname()))
         logdir = os.path.join(
