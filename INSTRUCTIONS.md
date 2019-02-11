@@ -119,7 +119,7 @@ Evaluating the `Res152 Denoise` model against 100-step PGD attackers takes about
 We provide a command line option to produce predictions for an image directory, e.g.:
 ```
 python main.py --eval-directory /path/to/image/directory --prediction-file predictions.txt \
-	--load X101-DenseDenoise.npz -d 101 --arch ResNeXtDenoiseAll
+	--load X101-DenseDenoise.npz -d 101 --arch ResNeXtDenoiseAll --batch 20
 ```
 
 This will produce a file "predictions.txt" which contains the filename and

@@ -225,7 +225,7 @@ if __name__ == '__main__':
         ds = MapData(
             ds,
             lambda dp: [cv2.resize(dp[0][:, :, ::-1], (224, 224), interpolation=cv2.INTER_CUBIC)])
-        ds = BatchData(ds, 20, remainder=True)
+        ds = BatchData(ds, args.batch, remainder=True)
 
         pred_config = PredictConfig(
             model=model,
