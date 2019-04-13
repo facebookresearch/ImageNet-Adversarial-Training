@@ -99,15 +99,20 @@ def eval_on_ILSVRC12(model, sessinit, dataflow):
         model=model,
         session_init=sessinit,
         input_names=['input', 'label'],
-        output_names=['wrong-top1', 'wrong-top5']
+        output_names=['wrong-top1', 'wrong-top5', 'attack_success']
     )
     pred = SimpleDatasetPredictor(pred_config, dataflow)
-    acc1, acc5 = RatioCounter(), RatioCounter()
-    for top1, top5 in pred.get_result():
+    acc1, acc5, succ = RatioCounter(), RatioCounter(), RatioCounter()
+    for top1, top5, num_succ in pred.get_result():
         batch_size = top1.shape[0]
         acc1.feed(top1.sum(), batch_size)
         acc5.feed(top5.sum(), batch_size)
+        succ.feed(num_succ.sum(), batch_size)
+        # Uncomment to monitor the metrics during evaluation
+        # print("Top1 Error: {}".format(acc1.ratio))
+        # print("Attack Success Rate: {}".format(succ.ratio))
     print("Top1 Error: {}".format(acc1.ratio))
+    print("Attack Success Rate: {}".format(succ.ratio))
     print("Top5 Error: {}".format(acc5.ratio))
 
 

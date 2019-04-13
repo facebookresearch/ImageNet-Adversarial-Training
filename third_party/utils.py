@@ -35,6 +35,8 @@ class HorovodClassificationError(Inferencer):
         batch_size = len(vec)
         wrong = np.sum(vec)
         self.err_stat.feed(wrong, batch_size)
+        # Uncomment this to monitor the metric during evaluation
+        # print(self.summary_name, self.err_stat.ratio)
 
     def _after_inference(self):
         tot = self.err_stat.total

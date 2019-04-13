@@ -76,13 +76,13 @@ Note:
    and the __attack success rate__ of the attacker, on ImageNet validation set.
    A targeted attack is considered successful if the image is classified to the target label.
 
-   __For defenders__, if you develop a new robust model, please compare its error rate with our models.
-   Attack success rate is not a reasonable metric, because then the model can cheat by making random predictions.
-
    __For attackers__, if you develop a new targeted attack method against our models,
-   please compare its attack success rate with PGD.
+   *please compare its attack success rate* with PGD.
    Error rate is not a reasonable metric, because then the method can cheat by becoming
    close to untargeted attacks.
+
+   __For defenders__, if you develop a new robust model, please compare its accuracy with our models.
+   Attack success rate is not a reasonable metric, because then the model can cheat by making random predictions.
 
 3. `ResNeXt101 DenoiseAll` is the submission that won the champion of
    black-box defense track in [Competition on Adversarial Attacks and Defenses 2018](http://hof.geekpwn.org/caad/en/index.html).
