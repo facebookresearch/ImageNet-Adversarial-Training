@@ -78,7 +78,7 @@ Note:
 
    __For attackers__, if you develop a new targeted attack method against our models,
    *please compare its attack success rate* with PGD.
-   Error rate is not a reasonable metric, because then the method can cheat by becoming
+   Error rate / accuracy is not a reasonable metric, because then the method can cheat by becoming
    close to untargeted attacks.
 
    __For defenders__, if you develop a new robust model, please compare its accuracy with our models.
