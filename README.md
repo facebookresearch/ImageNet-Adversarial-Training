@@ -1,7 +1,7 @@
 
 # Feature Denoising for Improving Adversarial Robustness
 
-Code and models for the paper [Feature Denoising for Improving Adversarial Robustness](https://arxiv.org/abs/1812.03411).
+Code and models for the paper [Feature Denoising for Improving Adversarial Robustness](https://arxiv.org/abs/1812.03411), CVPR2019.
 
 ## Introduction
 
@@ -38,10 +38,11 @@ This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for detai
 
 If you use our code, models or wish to refer to our results, please use the following BibTex entry:
 ```
-@article{xie2018feature,
-	title={Feature denoising for improving adversarial robustness},
-	author={Xie, Cihang and Wu, Yuxin and van der Maaten, Laurens and Yuille, Alan and He, Kaiming},
-	journal={arXiv preprint arXiv:1812.03411},
-	year={2018}
+@InProceedings{Xie_2019_CVPR,
+  author = {Xie, Cihang and Wu, Yuxin and van der Maaten, Laurens and Yuille, Alan L. and He, Kaiming},
+  title = {Feature Denoising for Improving Adversarial Robustness},
+  booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  month = {June},
+  year = {2019}
 }
 ```
