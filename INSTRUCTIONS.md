@@ -60,6 +60,7 @@
 </table>
 
 
+Click the first column to download the model and obtain the flags to be used with the script.
 
 Note:
 
