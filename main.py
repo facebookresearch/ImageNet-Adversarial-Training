@@ -132,7 +132,7 @@ def do_train(model):
                               lambda e: False)
 
     trainer = HorovodTrainer(average=True)
-    trainer.setup_graph(model.get_inputs_desc(), data, model.build_graph, model.get_optimizer)
+    trainer.setup_graph(model.get_input_signatuer(), data, model.build_graph, model.get_optimizer)
     trainer.train_with_defaults(
         callbacks=callbacks,
         steps_per_epoch=steps_per_epoch,
@@ -209,7 +209,7 @@ if __name__ == '__main__':
                 model.get_inference_func(attacker),
                 lambda e: True)
             trainer = HorovodTrainer()
-            trainer.setup_graph(model.get_inputs_desc(), PlaceholderInput(), model.build_graph, model.get_optimizer)
+            trainer.setup_graph(model.get_input_signature(), PlaceholderInput(), model.build_graph, model.get_optimizer)
             # train for an empty epoch, to reuse the distributed evaluation code
             trainer.train_with_defaults(
                 callbacks=[cb],
