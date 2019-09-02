@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorpack.models import regularize_cost, BatchNorm
 from tensorpack.tfutils.summary import add_moving_summary
 from tensorpack.tfutils import argscope
-from tensorpack.tfutils.tower import get_current_tower_context, TowerFuncWrapper
+from tensorpack.tfutils.tower import TowerFunc
 from tensorpack.utils import logger
 from tensorpack.utils.argtools import log_once
 from tensorpack.tfutils.collection import freeze_collection
@@ -182,7 +182,6 @@ class AdvImageNetModel(ImageNetModel):
         image = self.image_preprocess(image)
         assert self.data_format == 'NCHW'
         image = tf.transpose(image, [0, 3, 1, 2])
-        ctx = get_current_tower_context()
 
         with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
             # BatchNorm always comes with trouble. We use the testing mode of it during attack.
@@ -195,7 +194,7 @@ class AdvImageNetModel(ImageNetModel):
         loss = ImageNetModel.compute_loss_and_error(
             logits, label, label_smoothing=self.label_smoothing)
         AdvImageNetModel.compute_attack_success(logits, target_label)
-        if not ctx.is_training:
+        if not self.training:
             return
 
         wd_loss = regularize_cost(self.weight_decay_pattern,
@@ -217,7 +216,7 @@ class AdvImageNetModel(ImageNetModel):
         """
 
         def tower_func(image, label):
-            assert not get_current_tower_context().is_training
+            assert not self.training
             image = self.image_preprocess(image)
             image = tf.transpose(image, [0, 3, 1, 2])
             image, target_label = attacker.attack(image, label, self.get_logits)
@@ -225,7 +224,7 @@ class AdvImageNetModel(ImageNetModel):
             ImageNetModel.compute_loss_and_error(logits, label)  # compute top-1 and top-5
             AdvImageNetModel.compute_attack_success(logits, target_label)
 
-        return TowerFuncWrapper(tower_func, self.get_inputs_desc())
+        return TowerFunc(tower_func, self.get_input_signature())
 
     def image_preprocess(self, image):
         with tf.name_scope('image_preprocess'):

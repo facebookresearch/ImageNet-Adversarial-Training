@@ -32,7 +32,7 @@ def create_eval_callback(name, tower_func, condition):
 
     Args:
         name (str): a prefix
-        tower_func (TowerFuncWrapper): the inference tower function
+        tower_func (TowerFunc): the inference tower function
         condition: a function(epoch number) that returns whether this epoch should evaluate or not
     """
     dataflow = get_val_dataflow(
