@@ -18,7 +18,7 @@ import sys
 import horovod.tensorflow as hvd
 
 from tensorpack import *
-from tensorpack.tfutils import get_model_loader
+from tensorpack.tfutils import SmartInit
 
 import nets
 from adv_model import NoOpAttacker, PGDAttacker
@@ -132,11 +132,11 @@ def do_train(model):
                               lambda e: False)
 
     trainer = HorovodTrainer(average=True)
-    trainer.setup_graph(model.get_input_signatuer(), data, model.build_graph, model.get_optimizer)
+    trainer.setup_graph(model.get_input_signature(), data, model.build_graph, model.get_optimizer)
     trainer.train_with_defaults(
         callbacks=callbacks,
         steps_per_epoch=steps_per_epoch,
-        session_init=get_model_loader(args.load) if args.load is not None else None,
+        session_init=SmartInit(args.load),
         max_epoch=max_epoch,
         starting_epoch=args.starting_epoch)
 
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     hvd.init()
 
     if args.eval:
-        sessinit = get_model_loader(args.load)
+        sessinit = SmartInit(args.load)
         if hvd.size() == 1:
             # single-GPU eval, slow
             ds = get_val_dataflow(args.data, args.batch)
@@ -229,7 +229,7 @@ if __name__ == '__main__':
 
         pred_config = PredictConfig(
             model=model,
-            session_init=get_model_loader(args.load),
+            session_init=SmartInit(args.load),
             input_names=['input'],
             output_names=['linear/output']  # the logits
         )
