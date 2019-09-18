@@ -13,8 +13,6 @@ from tensorpack.dataflow import (
 from tensorpack.utils import logger
 from imagenet_utils import fbresnet_augmentor
 
-from zmq_ops import dump_arrays
-
 
 def get_data(batch, augmentors):
     """
@@ -53,6 +51,7 @@ if __name__ == '__main__':
     logger.info("Serving data on {}".format(socket.gethostname()))
 
     if args.benchmark:
+        from zmq_ops import dump_arrays
         ds = MapData(ds, dump_arrays)
         TestDataSpeed(ds, warmup=300).start()
     else:
