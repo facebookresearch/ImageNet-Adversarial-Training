@@ -8,7 +8,7 @@
   + horovod has many [installation options](https://github.com/uber/horovod/blob/master/docs/gpus.md) to optimize its multi-machine/multi-GPU performance.
     You might want to follow them.
 + ImageNet data in its standard directory structure.
-+ TensorFlow [zmq_ops](https://github.com/tensorpack/zmq_ops) (needed only for training)
++ TensorFlow [zmq_ops](https://github.com/tensorpack/zmq_ops) (needed only for training with real data)
 
 
 ## Model Zoo:
