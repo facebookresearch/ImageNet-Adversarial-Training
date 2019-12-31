@@ -13,6 +13,7 @@ import tensorflow as tf
 
 from tensorpack import TowerContext
 from tensorpack.tfutils import get_model_loader
+from tensorpack.dataflow.dataset import ILSVRCMeta
 
 import nets
 
@@ -47,5 +48,8 @@ sample = cv2.imread(args.input)  # this is a BGR image, not RGB
 # However, for images of unknown sources, let's just do a naive resize.
 sample = cv2.resize(sample, (224, 224))
 
-l = sess.run(logits, feed_dict={input: np.array([sample])})
-print("Prediction: ", l.argmax())
+prob = sess.run(logits, feed_dict={input: np.array([sample])})
+print("Prediction: ", prob.argmax())
+
+synset = ILSVRCMeta().get_synset_words_1000()
+print("Top 5: ", [synset[k] for k in prob[0].argsort()[-5:][::-1]])
